@@ -1,11 +1,27 @@
-import { defineNuxtPlugin, useState, watch } from '#imports'
+import { defineNuxtPlugin, useState, watch, computed } from '#imports'
 import getLoader from '#nuxt-easy-texts/loader'
-import { type ExistingTexts } from '#nuxt-easy-texts/generated-types'
+import {
+  type EasyTextsFunction,
+  type EasyTextsPluralFunction,
+} from '#nuxt-easy-texts/types'
 
 export default defineNuxtPlugin({
   name: 'texts',
   setup: async () => {
     const loader = getLoader()
+
+    const isDebug = useState('nuxt_easy_texts_debug_enabled', () => false)
+
+    const isDebugActive = computed(() => {
+      if (!loader.canDebug) {
+        return
+      }
+      if (!loader.canDebug()) {
+        return false
+      }
+
+      return isDebug.value
+    })
 
     const translations = useState<Record<string, string | string[]> | null>(
       'nuxt_easy_texts',
@@ -53,6 +69,9 @@ export default defineNuxtPlugin({
       provide: {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         texts: (key: string, _defaultText?: string): string => {
+          if (isDebugActive.value) {
+            return key
+          }
           return getSingleText(key)
         },
         textsPlural: (
@@ -63,6 +82,9 @@ export default defineNuxtPlugin({
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           _plural?: string,
         ): string => {
+          if (isDebugActive.value) {
+            return key
+          }
           const [singular, plural] = getPluralTexts(key)
           return count === 1 ? singular : plural
         },
@@ -71,58 +93,16 @@ export default defineNuxtPlugin({
   },
 })
 
-/**
- * Declare an editable and translatable text key.
- *
- * @param {string} key
- * @param {string} defaultText
- */
-type TextsFunctionTyped = <T extends keyof ExistingTexts>(
-  key: T,
-  defaultText: ExistingTexts[T],
-) => string
-
-/**
- * Declare an editable and translatable text key.
- *
- * @param {string} key
- * @param {string} defaultText
- */
-type TextsFunctionGeneric = (key: string, defaultText: string) => string
-
-/**
- * Declare an editable and translatable text key.
- *
- * @param {string} key
- * @param {string} defaultText
- */
-type TextsFunction = TextsFunctionTyped | TextsFunctionGeneric
-
-/**
- * Declare a plural text string.
- *
- * @param {string} key
- * @param {number} count
- * @param {string} singular
- * @param {string} plural
- */
-type TextsPluralFunction = (
-  key: string,
-  count: number,
-  singular: string,
-  plural: string,
-) => string
-
 declare module '#app' {
   interface NuxtApp {
-    $texts: TextsFunction
-    $textsPlural: TextsPluralFunction
+    $texts: EasyTextsFunction
+    $textsPlural: EasyTextsPluralFunction
   }
 }
 
 declare module 'vue' {
   interface ComponentCustomProperties {
-    $texts: TextsFunction
-    $textsPlural: TextsPluralFunction
+    $texts: EasyTextsFunction
+    $textsPlural: EasyTextsPluralFunction
   }
 }

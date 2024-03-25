@@ -15,5 +15,9 @@ export default defineEasyTextsLoader(() => {
     reloadTrigger() {
       return computed(() => language.value)
     },
+
+    canDebug() {
+      return true
+    },
   }
 })

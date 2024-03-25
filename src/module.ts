@@ -7,6 +7,7 @@ import {
   addVitePlugin,
   resolveFiles,
   updateTemplates,
+  addImports,
 } from '@nuxt/kit'
 import { fileExists } from './helpers'
 import { extname } from 'node:path'
@@ -101,6 +102,8 @@ export default loader`,
 
     const pattern = options.pattern || [
       './components/**/*.{js,ts,vue}',
+      './layouts/**/*.{js,ts,vue}',
+      './layers/**/*.{js,ts,vue}',
       './pages/**/*.{js,ts,vue}',
       './composables/**/*.{js,ts,vue}',
     ]
@@ -108,10 +111,13 @@ export default loader`,
     addPlugin(resolve('runtime/plugins/texts'))
 
     // Only add the vite plugin when building.
-    if (!nuxt.options.dev) {
-      addVitePlugin(textsVitePlugin())
-    }
-
+    // if (!nuxt.options.dev) {
+    addVitePlugin(textsVitePlugin())
+    // }
+    addImports({
+      from: resolve('./runtime/composables/useEasyTexts'),
+      name: 'useEasyTexts',
+    })
     // Get all files.
     const files = await resolveFiles(srcDir, pattern, {
       followSymbolicLinks: false,

@@ -27,5 +27,12 @@
     "defaultText": "Welcome to our homepage!",
     "type": "text",
     "filePath": "/run/media/dulnan/Storage/development/nuxt-easy-texts/playground/pages/[language]/index.vue"
+  },
+  {
+    "fullKey": "siteName",
+    "key": "siteName",
+    "defaultText": "nuxt-easy-texts Playground",
+    "type": "text",
+    "filePath": "/run/media/dulnan/Storage/development/nuxt-easy-texts/playground/layouts/default.vue"
   }
 ]

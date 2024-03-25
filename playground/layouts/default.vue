@@ -1,7 +1,8 @@
 <template>
   <div style="padding-top: 200px">
     <nav>
-      {{ siteName }}
+      <div>{{ siteName }}</div>
+      <div><button @click="toggleDebug">Toggle debug mode</button></div>
       <ul>
         <li>
           <NuxtLink to="/en">English</NuxtLink>
@@ -18,10 +19,9 @@
 </template>
 
 <script setup lang="ts">
-import { useCurrentLanguage, useNuxtApp, computed } from '#imports'
+import { computed, useEasyTexts } from '#imports'
 
-const { $texts } = useNuxtApp()
-const language = useCurrentLanguage()
+const { $texts, toggleDebug } = useEasyTexts()
 
 const siteName = computed(() =>
   $texts('siteName', 'nuxt-easy-texts Playground'),

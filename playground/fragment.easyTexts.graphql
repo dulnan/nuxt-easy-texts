@@ -6,4 +6,5 @@ fragment easyTexts on TextsLoader {
   counterZero: getText(key: "counterZero", default: "No items.")
   homepage: getText(key: "homepage", default: "Homepage")
   homepageTitle: getText(key: "homepageTitle", default: "Welcome to our homepage!")
+  siteName: getText(key: "siteName", default: "nuxt-easy-texts Playground")
 }
