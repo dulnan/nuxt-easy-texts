@@ -1,5 +1,5 @@
 export default defineNuxtConfig({
-  ssr: false,
+  ssr: true,
   modules: ['../src/module'],
 
   imports: {
@@ -23,7 +23,20 @@ export default defineNuxtConfig({
         outputPath: './fragment.easyTexts.graphql',
         generate: 'drupal-graphql-texts',
       },
+      {
+        outputPath: './texts.txt',
+        generate: (extractions) => {
+          return extractions
+            .map((v) => {
+              if (v.type === 'text') {
+                return `${v.fullKey}: ${v.defaultText}`
+              }
+              return `${v.fullKey}: ${v.singular} | ${v.plural}`
+            })
+            .join('\n')
+        },
+      },
     ],
-    globalTexts: { homepage: 'Homepage' },
+    globalTexts: { learnMore: 'Learn more' },
   },
 })

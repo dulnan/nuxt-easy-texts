@@ -41,7 +41,6 @@ export default function extractTexts(options: any = {}): Plugin {
         const tree = this.parse(code)
         if (tree) {
           const node = getExpression(tree)
-          console.log(code)
           // Only keep the first two arguments.
           // e.g. $textsPlural('context.key', count, '1 year', '@count years')
           // =>   $textsPlural('context.key', count)

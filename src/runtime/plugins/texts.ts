@@ -1,9 +1,7 @@
-import { defineNuxtPlugin, useState, watch, computed } from '#imports'
+import { defineNuxtPlugin, useState, watch } from '#imports'
 import getLoader from '#nuxt-easy-texts/loader'
-import {
-  type EasyTextsFunction,
-  type EasyTextsPluralFunction,
-} from '#nuxt-easy-texts/types'
+import { type EasyTextsPluralFunction } from '#nuxt-easy-texts/types'
+import { type ExistingTexts } from '#nuxt-easy-texts/generated-types'
 
 export default defineNuxtPlugin({
   name: 'texts',
@@ -11,17 +9,6 @@ export default defineNuxtPlugin({
     const loader = getLoader()
 
     const isDebug = useState('nuxt_easy_texts_debug_enabled', () => false)
-
-    const isDebugActive = computed(() => {
-      if (!loader.canDebug) {
-        return
-      }
-      if (!loader.canDebug()) {
-        return false
-      }
-
-      return isDebug.value
-    })
 
     const translations = useState<Record<string, string | string[]> | null>(
       'nuxt_easy_texts',
@@ -69,8 +56,8 @@ export default defineNuxtPlugin({
       provide: {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         texts: (key: string, _defaultText?: string): string => {
-          if (isDebugActive.value) {
-            return key
+          if (isDebug.value) {
+            return 'textsKey: ' + key
           }
           return getSingleText(key)
         },
@@ -82,11 +69,13 @@ export default defineNuxtPlugin({
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           _plural?: string,
         ): string => {
-          if (isDebugActive.value) {
-            return key
+          if (isDebug.value) {
+            return 'textsKey: ' + key
           }
           const [singular, plural] = getPluralTexts(key)
-          return count === 1 ? singular : plural
+          return count === 1
+            ? singular
+            : plural.replace('@count', count.toString())
         },
       },
     }
@@ -95,14 +84,26 @@ export default defineNuxtPlugin({
 
 declare module '#app' {
   interface NuxtApp {
-    $texts: EasyTextsFunction
+    $texts: {
+      <T extends keyof ExistingTexts>(
+        key: T,
+        defaultText: ExistingTexts[T],
+      ): string
+      (key: string, defaultText: string): string
+    }
     $textsPlural: EasyTextsPluralFunction
   }
 }
 
 declare module 'vue' {
   interface ComponentCustomProperties {
-    $texts: EasyTextsFunction
+    $texts: {
+      <T extends keyof ExistingTexts>(
+        key: T,
+        defaultText: ExistingTexts[T],
+      ): string
+      (key: string, defaultText: string): string
+    }
     $textsPlural: EasyTextsPluralFunction
   }
 }

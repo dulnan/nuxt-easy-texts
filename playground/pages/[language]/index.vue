@@ -3,10 +3,13 @@
     <h1>{{ $texts('homepageTitle', 'Welcome to our homepage!') }}</h1>
 
     <section>
-      <div>{{ count }}</div>
-      <button @click="count--">Decrement</button>
-      <button @click="count++">Increment</button>
-      <div>{{ text }}</div>
+      <button @click="count--">
+        {{ $texts('buttonDecrement', 'Remove 1') }}
+      </button>
+      <button @click="count++">
+        {{ $texts('buttonIncrement', 'Add 1') }}
+      </button>
+      <h3>{{ text }}</h3>
     </section>
   </div>
 </template>

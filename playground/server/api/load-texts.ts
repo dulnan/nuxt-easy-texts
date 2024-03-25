@@ -23,6 +23,14 @@ const translations: Record<string, Record<string, string | string[]>> = {
     ...en,
     homepageTitle: 'Willkommen auf unserer Homepage!',
     siteName: 'nuxt-easy-texts Spielplatz',
+    counterText: ['1 Ding', '@count Dinge'],
+    counterZero: 'Keine Dinge.',
+    learnMore: 'Mehr erfahren',
+    toggleDebugMode: 'Debug-Modus umschalten',
+    'language.english': 'Englisch',
+    'language.german': 'Deutsch',
+    buttonDecrement: '1 entfernen',
+    buttonIncrement: '1 hinzufügen',
   },
 }
 

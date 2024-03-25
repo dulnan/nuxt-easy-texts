@@ -1,14 +1,22 @@
 <template>
-  <div style="padding-top: 200px">
+  <div style="padding-top: 100px; padding-left: 40px">
     <nav>
       <div>{{ siteName }}</div>
-      <div><button @click="toggleDebug">Toggle debug mode</button></div>
+      <div>
+        <button @click="toggleDebug">
+          {{ $texts('toggleDebugMode', 'Toggle debug mode') }}
+        </button>
+      </div>
       <ul>
         <li>
-          <NuxtLink to="/en">English</NuxtLink>
+          <NuxtLink to="/en">{{
+            $texts('language.english', 'English')
+          }}</NuxtLink>
         </li>
         <li>
-          <NuxtLink to="/de">German</NuxtLink>
+          <NuxtLink to="/de">{{
+            $texts('language.german', 'German')
+          }}</NuxtLink>
         </li>
       </ul>
     </nav>

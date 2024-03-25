@@ -1,12 +1,15 @@
 import { computed, useNuxtApp, useState, type ComputedRef } from '#imports'
-
-import type {
-  EasyTextsFunction,
-  EasyTextsPluralFunction,
-} from '#nuxt-easy-texts/types'
+import { type ExistingTexts } from '#nuxt-easy-texts/generated-types'
+import type { EasyTextsPluralFunction } from '#nuxt-easy-texts/types'
 
 type UseEasyTexts = {
-  $texts: EasyTextsFunction
+  $texts: {
+    <T extends keyof ExistingTexts>(
+      key: T,
+      defaultText: ExistingTexts[T],
+    ): string
+    (key: string, defaultText: string): string
+  }
   $textsPlural: EasyTextsPluralFunction
   isDebug: ComputedRef<boolean>
   toggleDebug: () => void

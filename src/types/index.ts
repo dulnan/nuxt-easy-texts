@@ -32,5 +32,7 @@ export type EasyTextsGenerator = {
    *
    * It receives a single argument that contains all found extractions.
    */
-  generate: ((extractions: Extraction[]) => string) | BuiltInGeneratorMethod
+  generate:
+    | ((extractions: Extraction[]) => string | Promise<string>)
+    | BuiltInGeneratorMethod
 }

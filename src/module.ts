@@ -20,7 +20,7 @@ import jsonGenerator from './generators/json'
 
 /**
  * Since we have to parse JavaScript in order to figure out the arguments, we
- * can one allow JS-like file extensions.
+ * can only allow JS-like file extensions.
  */
 const POSSIBLE_EXTENSIONS = ['js', 'ts', 'vue', 'mjs']
 
@@ -131,23 +131,22 @@ export default loader`,
       filename: 'nuxt-easy-texts/generated-types.ts',
       write: true,
       getContents: () => {
-        const allExtractions = Object.keys(extractor.files)
-          .map((file) => {
-            const extractionMap = extractor.files[file]
-            return Object.keys(extractionMap).map((v) => extractionMap[v])
-          })
-          .flat()
+        const allExtractions = extractor.getUniqueExtractions()
 
-        const existingTextsMap: Record<string, string | undefined> = {}
+        const lines: string[] = []
 
         Object.values(allExtractions).forEach((extration) => {
           if (extration.type === 'text') {
-            existingTextsMap[extration.key] = extration.defaultText
+            lines.push(`  '${extration.fullKey}': "${extration.defaultText}"`)
           }
         })
 
+        lines.push(`  [key: string]: string`)
+
         return `
-export type ExistingTexts = ${JSON.stringify(existingTextsMap, null, 2)}
+export type ExistingTexts = {
+${lines.join('\n')}
+}
 `
       },
       options: {
@@ -182,7 +181,13 @@ export type ExistingTexts = ${JSON.stringify(existingTextsMap, null, 2)}
       return Promise.all(
         generators.map((generator) => {
           const generated = generator.generate(extractions)
-          return fs.promises.writeFile(generator.outputPath, generated)
+          const toPromise =
+            typeof generated === 'string'
+              ? Promise.resolve(generated)
+              : generated
+          return toPromise.then((result) => {
+            return fs.promises.writeFile(generator.outputPath, result)
+          })
         }),
       )
     }
