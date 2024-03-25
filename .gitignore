@@ -3,17 +3,8 @@ lib
 dist
 .nuxt
 playground/.nuxt
-
-src/runtime/css/output.css
-
 graphql/translations.graphql
-
-npmBuild/
-
 playground/translations.graphql
-
 playground/fragment.easyTexts.graphql
-
 playground/texts.json
-
 playground/texts.txt

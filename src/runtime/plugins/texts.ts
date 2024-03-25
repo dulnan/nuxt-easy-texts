@@ -54,23 +54,20 @@ export default defineNuxtPlugin({
 
     return {
       provide: {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         texts: (key: string, _defaultText?: string): string => {
           if (isDebug.value) {
-            return 'textsKey: ' + key
+            return key
           }
           return getSingleText(key)
         },
         textsPlural: (
           key: string,
           count: number,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           _singular?: string,
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           _plural?: string,
         ): string => {
           if (isDebug.value) {
-            return 'textsKey: ' + key
+            return key
           }
           const [singular, plural] = getPluralTexts(key)
           return count === 1

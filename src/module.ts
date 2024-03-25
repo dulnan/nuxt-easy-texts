@@ -1,4 +1,6 @@
 import { fileURLToPath } from 'url'
+import { extname } from 'node:path'
+import fs from 'node:fs'
 import {
   createResolver,
   defineNuxtModule,
@@ -10,8 +12,6 @@ import {
   addImports,
 } from '@nuxt/kit'
 import { fileExists } from './helpers'
-import { extname } from 'node:path'
-import fs from 'node:fs'
 import textsVitePlugin from './vitePlugin'
 import TextsExtractor from './Extractor'
 import type { EasyTextsGenerator } from './types'

@@ -1,15 +1,9 @@
-import { defineVuepalAdapter } from '#vuepal/types'
+import { defineEasyTextsLoader } from '#nuxt-easy-texts/types'
 
-export default defineVuepalAdapter(() => {
+export default defineEasyTextsLoader(() => {
   return {
-    getTranslations() {
+    load() {
       return Promise.resolve({})
-    },
-    getStaticNodes() {
-      return Promise.resolve([])
-    },
-    getAdminMenu() {
-      return Promise.resolve(undefined)
     },
   }
 })

@@ -1,9 +1,10 @@
+/* eslint no-console: 0 */
 import { promises as fs } from 'node:fs'
 import type { BaseCallExpression, Expression, SpreadElement } from 'estree'
 import { parse } from 'acorn'
 import { falsy } from '../helpers'
-import { RGX_TEXTS, RGX_TEXTS_PLURAL } from './../vitePlugin'
 import type { Extraction, ExtractionPlural, ExtractionText } from '../types'
+import { RGX_TEXTS, RGX_TEXTS_PLURAL } from './../vitePlugin'
 
 export function getExpression(program: any): BaseCallExpression {
   return program.body[0]?.expression
@@ -191,7 +192,7 @@ export default class Extractor {
     return extractions
   }
 
-  handleError(filePath: string, code: string, e: any) {
+  handleError(filePath: string, _code: string, e: any) {
     const message =
       typeof e === 'object' && e !== null
         ? e.message

@@ -27,6 +27,7 @@ export default function (extractions: Extraction[]) {
           if (inputValue) {
             return `${inputName}: ${input(inputValue)}`
           }
+          return null
         })
         .filter(Boolean)
         .join(', ')
