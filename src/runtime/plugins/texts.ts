@@ -4,7 +4,7 @@ import { type EasyTextsPluralFunction } from '#nuxt-easy-texts/types'
 import { type ExistingTexts } from '#nuxt-easy-texts/generated-types'
 
 export default defineNuxtPlugin({
-  name: 'texts',
+  name: 'nuxt-easy-texts',
   setup: async () => {
     const loader = getLoader()
 

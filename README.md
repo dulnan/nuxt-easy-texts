@@ -1,12 +1,25 @@
-# nuxt-easy-texts - key-based texts/translations extractor and loader for Nuxt 3.
+# nuxt-easy-texts - key-based texts/translations for Nuxt 3
 
-## Features
-
-- Define translatable texts using keys and optional default values
-- Load texts and translations at runtime
+- Define translatable texts using keys and default texts
+- Load and override texts and translations at runtime
 - Support for plural text strings
 - Customize how text extractions are generated (JSON, PO file, GraphQL, ...)
-- Debug mode that renders the keys
+- Debug mode to render the key instead of the text
+
+### Why not...?
+
+This module was created to specifically solve a single problem: Having an easy
+way to collect translatable texts _and_ load their translations at runtime (for
+example from an API endpoint). The compiled build will only contain the keys and
+no more texts. They always have to be provided at runtime.
+
+It is not meant as a full replacement for something like
+[vue-i18n](https://vue-i18n.intlify.dev) or
+[nuxt/i18n](https://i18n.nuxtjs.org), which offer way more features such as
+language based routing, SEO, etc.
+
+If the only thing you want to do is collect texts in your code and load them at
+runtime, this module is for you!
 
 ```vue
 <template>
@@ -34,34 +47,6 @@ export default defineNuxtConfig({
       },
     ],
   },
-})
-```
-
-### Configure loader
-
-All texts are loaded at runtime. How and where the texts are loaded is up to
-you. To define a loader, create the following file in
-`~/app/easyTexts.loader.ts`:
-
-```typescript
-import { defineEasyTextsLoader } from '#nuxt-easy-texts/types'
-
-export default defineEasyTextsLoader(() => {
-  const language = useCurrentLanguage()
-
-  return {
-    load(): Promise<Record<string, string | [string, string]>> {
-      // Load the texts in the current language from an API route.
-      // Method should return an object whose properties are the full keys and
-      // the values are either a string (for $texts keys) or an array of
-      // exactly two strings (for $textsPlural keys).
-      return $fetch('/api/load-texts', {
-        query: {
-          language: language.value,
-        },
-      })
-    },
-  }
 })
 ```
 
@@ -95,10 +80,55 @@ const { $texts, $textsPlural } = useEasyTexts()
 const text = computed(() => $texts('backToTop', 'Back to top'))
 ```
 
+### Configure loader
+
+All texts are loaded at runtime. How and where the texts are loaded is up to
+you. To define a loader, create the following file in
+`~/app/easyTexts.loader.ts`:
+
+```typescript
+import { defineEasyTextsLoader } from '#nuxt-easy-texts/types'
+
+export default defineEasyTextsLoader(() => {
+  const language = useCurrentLanguage()
+
+  return {
+    load(): Promise<Record<string, string | [string, string]>> {
+      // Load the texts in the current language from an API route.
+      // Method should return an object whose properties are the full keys and
+      // the values are either a string (for $texts keys) or an array of
+      // exactly two strings (for $textsPlural keys).
+      //
+      // For our two examples above, the loader would return the following:
+      // {
+      //   homeTitle: 'Welcome!',
+      //   counter: ['One item', '@count items'],
+      // }
+      return $fetch('/api/load-texts', {
+        query: {
+          language: language.value,
+        },
+      })
+    },
+  }
+})
+```
+
+nuxt-easy-texts will call this method inside its plugin, right before it injects
+`$texts` and `$textsPlural`. Make sure that anything that requires these two
+methods is loaded **after** this plugin is initialized.
+
 ## How it works
 
-nuxt-easy-texts searches your Vue components for all calls to the `$texts` and
-`$textsPlural` methods.
+nuxt-easy-texts searches your Vue components and JS/TS files for all calls to
+the `$texts` and `$textsPlural` methods. Because of that, there are a few things
+that won't work:
+
+- Rename methods: The name of the method must be exactly `$texts` or
+  `$textsPlural` - you can't rename them (e.g.
+  `const { $texts: getText } = useEasyTexts()` will not work)
+- Use variables: You can only use string literals inside both methods. Something
+  like `{{ $texts('language_' + language) }}` will not work
 
 ### Output files
 
@@ -140,6 +170,43 @@ export default defineNuxtConfig({
 })
 ```
 
+#### Generate a GraphQL fragment for the drupal/texts module
+
+If you use the [drupal/texts](https://www.drupal.org/project/texts) module, you
+can use the builtin `drupal-graphql-texts` generate option. It will generate a
+fragment file that can be used to load the translations in a GraphQL query.
+
+```typescript
+export default defineNuxtConfig({
+  modules: ['nuxt-easy-texts'],
+
+  easyTexts: {
+    generators: [
+      {
+        outputPath: './fragment.easyTexts.graphql',
+        generate: 'drupal-graphql-texts',
+      },
+    ],
+  },
+})
+```
+
+The resulting file will look like this:
+
+```graphql
+fragment easyTexts on TextsLoader {
+  homeTitle: getText(key: "homeTitle", default: "Welcome!")
+  counter: getTextPlural(
+    key: "counter"
+    singular: "One item"
+    plural: "@count items"
+  ) {
+    singular
+    plural
+  }
+}
+```
+
 ### Load the texts
 
 All default/singular/plural texts in your code are compiled away, for example:
@@ -164,12 +231,39 @@ const counter = ref(1)
 const countText = $textsPlural('countText', counter.value)
 ```
 
-nuxt-easy-texts assumes that every text string is loaded at runtime.
+nuxt-easy-texts requires that every text string is loaded at runtime. The
+default texts are not available at runtime in any way. You could however
+generate a JSON file with a custom `generate` method and then return said JSON
+file in your loaders `load()` method.
+
+### Text keys and contexts
+
+Providing context is also possible. You can do that by prefixing the key with a
+string followed by a dot:
+
+```vue
+<template>
+  <div>{{ $texts('cart.addButton', 'Add to cart') }}</div>
+</template>
+```
+
+This will generate the following extraction:
+
+```json
+{
+  "fullKey": "cart.addButton",
+  "key": "addButton",
+  "context": "cart",
+  "defaultText": "Add to cart",
+  "type": "text",
+  "filePath": "/var/www/example/components/AddToCart.vue"
+}
+```
 
 ## Debug Mode
 
-This is helpful if you want to offer content editors a way to easily find which
-text key is being shown.
+This is helpful if you want to offer content editors in a CMS a way to easily
+find which text key is currently being shown.
 
 ```typescript
 const { $texts, toggleDebug } = useEasyTexts()
@@ -187,11 +281,11 @@ console.log(goBackText.value)
 
 ## Changing languages (reloading texts)
 
-If the language changes you may want to reload all texts. To do that, implement
-a `reloadTrigger` method in your loader. The method should return a computed
-property. The nuxt-easy-texts adds a watcher to this property on the client side
-and will reload the texts by calling `load()` again on your loader when the
-value changes.
+If the language or any context (like country) changes you may want to reload all
+texts. To do that, implement a `reloadTrigger` method in your loader. The method
+should return a computed property. nuxt-easy-texts adds a watcher to this
+property on the client side and will reload the texts by calling `load()` again
+on your loader when the value changes.
 
 ```typescript
 import { defineEasyTextsLoader } from '#nuxt-easy-texts/types'
@@ -207,7 +301,16 @@ export default defineEasyTextsLoader(() => {
 })
 ```
 
-## Configuration reference
+**NOTE:** The watcher is only added client-side, not during SSR! The
+`loader.load()` method is called exactly once during SSR and it must return the
+correct translations.
+
+Because the loaded texts are stored using `useState()` they are part of the
+payload. So during hydration, the `loader.load()` method is not called.
+
+## Reference
+
+### Configuration reference
 
 ```typescript
 export default defineNuxtConfig({
@@ -237,3 +340,49 @@ export default defineNuxtConfig({
   },
 })
 ```
+
+### useEasyTexts() composable
+
+```typescript
+const {
+  $texts,
+  $textsPlural,
+  isDebug,
+  enableDebug,
+  disableDebug,
+  toggleDebug,
+} = useEasyTexts()
+```
+
+#### $texts
+
+Use a single text string
+
+```typescript
+$texts('backToHome', 'Back to homepage')
+```
+
+#### $textsPlural
+
+Use text string with a singular and plural option.
+
+```typescript
+const cartCount = ref(2)
+$textsPlural('cartItems', cartCount.value, '1 items', '@count items')
+```
+
+#### isDebug: ComputeRef<boolean>
+
+Check if debug mode is enabled.
+
+#### enabledDebug: () => void
+
+Enable debug mode.
+
+#### disableDebug: () => void
+
+Disable debug mode.
+
+#### toggleDebug: () => void
+
+Toggle debug mode.
