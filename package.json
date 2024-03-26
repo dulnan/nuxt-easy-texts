@@ -2,6 +2,10 @@
   "name": "nuxt-easy-texts",
   "version": "1.0.0",
   "description": "Easy key-based text extractor and loader for Nuxt 3",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dulnan/nuxt-easy-texts.git"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -31,8 +35,13 @@
   "publishConfig": {
     "access": "public"
   },
-  "author": "",
-  "license": "ISC",
+  "author": [
+    {
+      "name": "Jan Hug",
+      "url": "https://www.dulnan.net"
+    }
+  ],
+  "license": "MIT",
   "dependencies": {
     "@nuxt/kit": "^3.11.1",
     "astring": "^1.8.6"
