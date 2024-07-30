@@ -1,6 +1,6 @@
 {
   "name": "nuxt-easy-texts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Easy key-based text extractor and loader for Nuxt 3",
   "repository": {
     "type": "git",

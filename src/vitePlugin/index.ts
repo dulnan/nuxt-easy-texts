@@ -4,8 +4,76 @@ import { generate } from 'astring'
 import { getExpression } from '../Extractor'
 
 const fileRegex = /\.(vue|js|ts|mjs)$/
-export const RGX_TEXTS = /(\$texts\((.+?)\))/gms
-export const RGX_TEXTS_PLURAL = /(\$textsPlural\((.+?)\))/gms
+
+/**
+ * Extract calls to the given method.
+ *
+ * The provided method should be the name of the method including the first
+ * opening bracket, e.g. "$texts(".
+ *
+ * The return value is an array of all occurences of full calls to the
+ * given method.
+ */
+export function extractMethodCalls(code: string, method: string): string[] {
+  const methodCalls: string[] = []
+  const methodLength = method.length
+  let i = 0
+
+  while (i < code.length) {
+    const startIndex = code.indexOf(method, i)
+    // No more occurrences.
+    if (startIndex === -1) {
+      break
+    }
+
+    let endIndex = startIndex + methodLength
+    let openBrackets = 1
+
+    // Keep track of the quotes.
+    let inSingleQuote = false
+    let inDoubleQuote = false
+    let inTemplateLiteral = false
+
+    while (endIndex < code.length && openBrackets > 0) {
+      const char = code[endIndex]
+      const prevChar = code[endIndex - 1]
+
+      if (char === "'" && !inDoubleQuote && !inTemplateLiteral) {
+        inSingleQuote = !inSingleQuote
+      } else if (char === '"' && !inSingleQuote && !inTemplateLiteral) {
+        inDoubleQuote = !inDoubleQuote
+      } else if (char === '`' && !inSingleQuote && !inDoubleQuote) {
+        inTemplateLiteral = !inTemplateLiteral
+      }
+
+      if (!inSingleQuote && !inDoubleQuote && !inTemplateLiteral) {
+        if (char === '(') {
+          openBrackets++
+        } else if (char === ')') {
+          openBrackets--
+        }
+      } else if (inTemplateLiteral && char === '$' && prevChar === '{') {
+        // Handle nested expressions within template literals.
+        openBrackets++
+      } else if (inTemplateLiteral && char === '}' && prevChar === '}') {
+        // Handle closing of nested expressions within template literals.
+        openBrackets--
+      }
+
+      endIndex++
+    }
+
+    if (openBrackets === 0) {
+      methodCalls.push(code.substring(startIndex, endIndex))
+      // Move index to the end of the current method call.
+      i = endIndex
+    } else {
+      throw new Error('Unmatched parentheses in the code.')
+    }
+  }
+
+  return methodCalls
+}
 
 export default function extractTexts(options: any = {}): Plugin {
   const isSourceMapEnabled =
@@ -24,9 +92,7 @@ export default function extractTexts(options: any = {}): Plugin {
       }
 
       const magicString = new MagicString(source)
-      const matches = [...source.matchAll(RGX_TEXTS)]
-      matches.forEach((match) => {
-        const code = match[0]
+      extractMethodCalls(source, '$texts(').forEach((code) => {
         const tree = this.parse(code)
         if (tree) {
           const node = getExpression(tree)
@@ -36,8 +102,8 @@ export default function extractTexts(options: any = {}): Plugin {
           magicString.replace(code, processed)
         }
       })
-      ;[...source.matchAll(RGX_TEXTS_PLURAL)].forEach((match) => {
-        const code = match[0]
+
+      extractMethodCalls(source, '$textsPlural(').forEach((code) => {
         const tree = this.parse(code)
         if (tree) {
           const node = getExpression(tree)

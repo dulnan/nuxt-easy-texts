@@ -31,6 +31,8 @@ const translations: Record<string, Record<string, string | string[]>> = {
     'language.german': 'Deutsch',
     buttonDecrement: '1 entfernen',
     buttonIncrement: '1 hinzufügen',
+    textWithQuotes: 'Es hat "@count" Dinge!',
+    textWithBrackets: 'Es hat "sehr viele" (@count) Dinge!',
   },
 }
 

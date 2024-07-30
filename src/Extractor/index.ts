@@ -1,10 +1,12 @@
-/* eslint no-console: 0 */
 import { promises as fs } from 'node:fs'
 import type { BaseCallExpression, Expression, SpreadElement } from 'estree'
 import { parse } from 'acorn'
+import { useLogger } from '@nuxt/kit'
 import { falsy } from '../helpers'
 import type { Extraction, ExtractionPlural, ExtractionText } from '../types'
-import { RGX_TEXTS, RGX_TEXTS_PLURAL } from './../vitePlugin'
+import { extractMethodCalls } from '../vitePlugin'
+
+const logger = useLogger('nuxt-easy-text')
 
 export function getExpression(program: any): BaseCallExpression {
   return program.body[0]?.expression
@@ -19,6 +21,8 @@ export function extractLiteral(
     if (literal.value && typeof literal.value === 'string') {
       return literal.value
     }
+  } else if (literal && literal.type === 'TemplateLiteral') {
+    return literal.quasis[0].value.raw
   }
   if (throwError) {
     if (literal) {
@@ -192,13 +196,13 @@ export default class Extractor {
     return extractions
   }
 
-  handleError(filePath: string, _code: string, e: any) {
+  handleError(filePath: string, code: string, e: any) {
     const message =
       typeof e === 'object' && e !== null
         ? e.message
         : 'Failed to parse text arguments.'
 
-    console.error(`${message + filePath}\n`)
+    logger.error(`${message + filePath}\n`, code)
 
     if (this.isBuild) {
       throw new Error('Failed to extract texts.')
@@ -209,21 +213,19 @@ export default class Extractor {
    * Extract the single text method calls.
    */
   extractSingle(source: string, filePath: string): Extraction[] {
-    return [...source.matchAll(RGX_TEXTS)]
+    return extractMethodCalls(source, '$texts(')
       .map((match) => {
-        const code = match[0]
-        const tree = parse(code, {
-          ecmaVersion: 'latest',
-        })
-
-        let extractedTree = null
         try {
-          extractedTree = extract(tree, filePath)
+          const tree = parse(match, {
+            ecmaVersion: 'latest',
+          })
+
+          return extract(tree, filePath)
         } catch (e) {
-          this.handleError(filePath, code, e)
+          this.handleError(filePath, match, e)
         }
 
-        return extractedTree
+        return null
       })
       .filter(falsy)
   }
@@ -232,21 +234,18 @@ export default class Extractor {
    * Extract the text plural method calls.
    */
   extractPlural(source: string, filePath: string): ExtractionPlural[] {
-    return [...source.matchAll(RGX_TEXTS_PLURAL)]
+    return extractMethodCalls(source, '$textsPlural(')
       .map((match) => {
-        const code = match[0]
-        const tree = parse(code, {
-          ecmaVersion: 'latest',
-        })
-
-        let extractedTree = null
         try {
-          extractedTree = extractPlural(tree, filePath)
+          const tree = parse(match, {
+            ecmaVersion: 'latest',
+          })
+          return extractPlural(tree, filePath)
         } catch (e) {
-          this.handleError(filePath, code, e)
+          this.handleError(filePath, match, e)
         }
 
-        return extractedTree
+        return null
       })
       .filter(falsy)
   }
@@ -284,19 +283,19 @@ export default class Extractor {
           existing.defaultText &&
           v.defaultText
         ) {
-          console.info(
+          logger.info(
             `The text key "${v.fullKey}" has multiple different default texts:"`,
           )
-          console.info(v.filePath)
-          console.info(v.defaultText)
-          console.info(existing.filePath)
-          console.info(existing.defaultText)
+          logger.info(v.filePath)
+          logger.info(v.defaultText)
+          logger.info(existing.filePath)
+          logger.info(existing.defaultText)
         } else if (existing.type !== v.type) {
-          console.info(
+          logger.info(
             `The text key "${v.fullKey}" is used for two different text types:"`,
           )
-          console.info(v.filePath)
-          console.info(existing.filePath)
+          logger.info(v.filePath)
+          logger.info(existing.filePath)
         }
       }
 

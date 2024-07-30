@@ -137,7 +137,9 @@ export default loader`,
 
         Object.values(allExtractions).forEach((extration) => {
           if (extration.type === 'text') {
-            lines.push(`  '${extration.fullKey}': "${extration.defaultText}"`)
+            lines.push(
+              `  '${extration.fullKey}': ${JSON.stringify(extration.defaultText)}`,
+            )
           }
         })
 
