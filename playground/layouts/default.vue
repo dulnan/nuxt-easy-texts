@@ -31,7 +31,10 @@ import { computed, useEasyTexts } from '#imports'
 
 const { $texts, toggleDebug } = useEasyTexts()
 
-const siteName = computed(() =>
-  $texts('siteName', 'nuxt-easy-texts Playground'),
-)
+const siteName = computed(() => {
+  const a = $texts('a.siteName', 'nuxt-easy-texts')
+  const b = $texts('b.siteName', 'Playground')
+
+  return `${a} ${b}`
+})
 </script>

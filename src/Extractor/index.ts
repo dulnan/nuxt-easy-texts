@@ -132,7 +132,7 @@ export default class Extractor {
     if (!this.files[filePath]) {
       this.files[filePath] = {}
       extractions.forEach((v) => {
-        this.files[filePath][v.key] = v
+        this.files[filePath][v.fullKey] = v
       })
       return true
     }
@@ -145,7 +145,7 @@ export default class Extractor {
     const hasChange =
       differentLength ||
       extractions.some((extraction) => {
-        const existing = this.files[filePath][extraction.key]
+        const existing = this.files[filePath][extraction.fullKey]
         // New extraction key.
         if (!existing) {
           return true
@@ -175,7 +175,7 @@ export default class Extractor {
     if (hasChange) {
       this.files[filePath] = {}
       extractions.forEach((v) => {
-        this.files[filePath][v.key] = v
+        this.files[filePath][v.fullKey] = v
       })
     }
 
