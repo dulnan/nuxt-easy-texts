@@ -1,4 +1,4 @@
-import type { Extraction } from '../types'
+import type { Extraction } from '../moduleTypes'
 
 const input = (v: string) => '"' + v.replaceAll('"', '\\"') + '"'
 

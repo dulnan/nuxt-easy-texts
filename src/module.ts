@@ -14,9 +14,10 @@ import {
 import { fileExists } from './helpers'
 import textsVitePlugin from './vitePlugin'
 import TextsExtractor from './Extractor'
-import type { EasyTextsGenerator } from './types'
+import type { EasyTextsGenerator } from './moduleTypes'
 import drupalGraphqlTextsGenerator from './generators/drupal-graphql-texts'
 import jsonGenerator from './generators/json'
+import './types'
 
 /**
  * Since we have to parse JavaScript in order to figure out the arguments, we

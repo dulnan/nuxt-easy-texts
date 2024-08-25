@@ -3,7 +3,11 @@ import type { BaseCallExpression, Expression, SpreadElement } from 'estree'
 import { parse } from 'acorn'
 import { useLogger } from '@nuxt/kit'
 import { falsy } from '../helpers'
-import type { Extraction, ExtractionPlural, ExtractionText } from '../types'
+import type {
+  Extraction,
+  ExtractionPlural,
+  ExtractionText,
+} from '../moduleTypes'
 import { extractMethodCalls } from '../vitePlugin'
 
 const logger = useLogger('nuxt-easy-text')

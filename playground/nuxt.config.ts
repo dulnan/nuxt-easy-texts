@@ -39,4 +39,6 @@ export default defineNuxtConfig({
     ],
     globalTexts: { learnMore: 'Learn more' },
   },
+
+  compatibilityDate: '2024-08-25',
 })

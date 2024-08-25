@@ -1,7 +1,5 @@
 import { defineNuxtPlugin, useState, watch } from '#imports'
 import getLoader from '#nuxt-easy-texts/loader'
-import { type EasyTextsPluralFunction } from '#nuxt-easy-texts/types'
-import { type ExistingTexts } from '#nuxt-easy-texts/generated-types'
 
 export default defineNuxtPlugin({
   name: 'nuxt-easy-texts',
@@ -45,7 +43,7 @@ export default defineNuxtPlugin({
       return [key, key]
     }
 
-    if (process.client && loader.reloadTrigger) {
+    if (import.meta.client && loader.reloadTrigger) {
       const trigger = loader.reloadTrigger()
       watch(trigger, async () => {
         translations.value = await loader.load()
@@ -78,29 +76,3 @@ export default defineNuxtPlugin({
     }
   },
 })
-
-declare module '#app' {
-  interface NuxtApp {
-    $texts: {
-      <T extends keyof ExistingTexts>(
-        key: T,
-        defaultText: ExistingTexts[T],
-      ): string
-      (key: string, defaultText: string): string
-    }
-    $textsPlural: EasyTextsPluralFunction
-  }
-}
-
-declare module 'vue' {
-  interface ComponentCustomProperties {
-    $texts: {
-      <T extends keyof ExistingTexts>(
-        key: T,
-        defaultText: ExistingTexts[T],
-      ): string
-      (key: string, defaultText: string): string
-    }
-    $textsPlural: EasyTextsPluralFunction
-  }
-}
