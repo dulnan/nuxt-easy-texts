@@ -43,15 +43,18 @@ export default defineNuxtPlugin({
       return [key, key]
     }
 
-    if (import.meta.client && loader.reloadTrigger) {
-      const trigger = loader.reloadTrigger()
-      watch(trigger, async () => {})
-    }
-
-    if (import.meta.hot) {
-      import.meta.hot.on('nuxt-easy-texts:reload', async () => {
+    if (import.meta.client) {
+      async function reload() {
         translations.value = await loader.load()
-      })
+      }
+      if (loader.reloadTrigger) {
+        const trigger = loader.reloadTrigger()
+        watch(trigger, () => reload())
+      }
+
+      if (import.meta.hot) {
+        import.meta.hot.on('nuxt-easy-texts:reload', () => reload())
+      }
     }
 
     return {

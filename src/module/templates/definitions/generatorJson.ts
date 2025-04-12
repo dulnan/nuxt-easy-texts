@@ -9,7 +9,7 @@ export default function (path: string): CollectorTemplate {
       path,
     },
     (extractions) => {
-      return JSON.stringify([...extractions.values()])
+      return JSON.stringify(extractions)
     },
     null,
   )

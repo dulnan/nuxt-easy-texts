@@ -7,7 +7,7 @@ type TemplateOptions = {
 }
 
 type CollectorTemplateCallback = (
-  extractions: Map<string, Extraction>,
+  extractions: Extraction[],
   helper: ModuleHelper,
 ) => string | Promise<string>
 

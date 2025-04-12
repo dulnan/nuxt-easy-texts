@@ -6,7 +6,7 @@ export default defineCollectorTemplate(
     virtual: true,
   },
   (extractions) => {
-    const keys = [...extractions.values()]
+    const keys = extractions
       .map((v) => v.fullKey)
       .map((key) => {
         return `"${key}"`
@@ -19,7 +19,7 @@ export const KEYS = [
 `
   },
   (extractions) => {
-    const unique = [...extractions.values()].reduce<Record<string, string>>(
+    const unique = extractions.reduce<Record<string, string>>(
       (acc, extraction) => {
         if (extraction.type === 'text') {
           if (extraction.defaultText) {

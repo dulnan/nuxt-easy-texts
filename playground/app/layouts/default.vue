@@ -2,7 +2,9 @@
   <div style="padding-top: 100px; padding-left: 40px">
     <nav>
       <div>{{ siteName }}</div>
-      <div>{{ $texts('debugHmr', 'Test') }}</div>
+      <div>
+        {{ $texts('debugHmr', 'asdfaasdf asdfasdf Test foobar fasfasdfasdf') }}
+      </div>
       <div>
         <button @click="toggleDebug">
           {{ $texts('toggleDebugMode', 'Toggle debug mode') }}
@@ -38,4 +40,6 @@ const siteName = computed(() => {
 
   return `${a} ${b}`
 })
+
+const foobar = 'asdfasdf'
 </script>

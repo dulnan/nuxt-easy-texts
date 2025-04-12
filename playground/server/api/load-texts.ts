@@ -43,5 +43,6 @@ export default defineEventHandler((event) => {
   return {
     ...translations[language],
     debugHmr: 'Test HMR: ' + Math.round(Math.random() * 1000000000).toString(),
+    texts,
   }
 })

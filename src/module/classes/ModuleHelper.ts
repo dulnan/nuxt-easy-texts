@@ -13,7 +13,6 @@ import { relative } from 'pathe'
 import type { Nuxt, ResolvedNuxtTemplate } from 'nuxt/schema'
 import micromatch from 'micromatch'
 import { fileExists, logger } from '../helpers'
-import type { InputLogObject } from 'consola'
 import type { StaticTemplate } from '../templates/defineTemplate'
 import type { ModuleOptions } from './../types/options'
 
@@ -198,6 +197,17 @@ export class ModuleHelper {
    */
   public toBuildRelative(path: string): string {
     return relative(this.nuxt.options.buildDir, path)
+  }
+
+  /**
+   * Transform the path relative to the Nuxt build directory.
+   *
+   * @param path - The absolute path.
+   *
+   * @returns The path relative to the module's build directory.
+   */
+  public toSourceRelative(path: string): string {
+    return relative(process.cwd(), path)
   }
 
   /**

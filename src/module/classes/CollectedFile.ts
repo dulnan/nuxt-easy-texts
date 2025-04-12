@@ -7,7 +7,6 @@ import type {
   ExtractionText,
 } from '../types/extraction'
 import { extractMethodCalls } from '../../vitePlugin'
-import { falsy, logger } from '../helpers'
 import type { Cache } from './Cache'
 import { getExpression } from '../helpers/ast'
 
@@ -72,14 +71,17 @@ function extractPlural(
   }
 }
 
-function extract(program: any, filePath: string): ExtractionText | undefined {
+function extractSingle(
+  program: any,
+  filePath: string,
+): ExtractionText | undefined {
   const node = getExpression(program)
   if (!node) {
     return
   }
 
   const fullKey = extractLiteral(node.arguments[0], 'key', true)
-  const defaultText = extractLiteral(node.arguments[1], 'defaultText')
+  const defaultText = extractLiteral(node.arguments[1], 'defaultText', true)
 
   if (fullKey) {
     const { key, context } = parseKey(fullKey)
@@ -87,10 +89,17 @@ function extract(program: any, filePath: string): ExtractionText | undefined {
   }
 }
 
+export type ExtractionError = {
+  source: string
+  message: string
+  filePath: string
+}
+
 export class CollectedFile {
   filePath: string
   fileContents: string
   extractions: Extraction[] = []
+  errors: ExtractionError[] = []
 
   constructor(
     private cache: Cache,
@@ -99,7 +108,7 @@ export class CollectedFile {
   ) {
     this.filePath = filePath
     this.fileContents = fileContents
-    this.extractions = this.getExtractions()
+    this.buildExtractions()
   }
 
   static async fromFilePath(
@@ -122,90 +131,63 @@ export class CollectedFile {
     }
 
     this.fileContents = newContents
-    this.extractions = this.getExtractions()
+    this.buildExtractions()
     return true
   }
 
-  handleError(filePath: string, code: string, e: any) {
+  handleError(e: any, source: string) {
     const message =
       typeof e === 'object' && e !== null
         ? e.message
         : 'Failed to parse text arguments.'
 
-    logger.error(`${message + filePath}\n`, code)
-
-    throw new Error('Failed to extract texts.')
+    this.errors.push({ message, source, filePath: this.filePath })
   }
 
   /**
    * Find all possible extractions from the given source.
    */
-  private getExtractions(): Extraction[] {
-    const extractions: Extraction[] = []
+  private buildExtractions() {
+    this.extractions = []
+    this.errors = []
+
     if (this.fileContents.includes('$texts(')) {
-      extractions.push(...this.extractSingle())
+      this.extract('$texts(', this.cache.singleCache, extractSingle)
     }
     if (this.fileContents.includes('$textsPlural(')) {
-      extractions.push(...this.extractPlural())
+      this.extract('$textsPlural(', this.cache.pluralCache, extractPlural)
     }
-    return extractions
   }
 
   /**
    * Extract the single text method calls.
    */
-  extractSingle(): ExtractionText[] {
-    return extractMethodCalls(this.fileContents, '$texts(')
-      .map((match) => {
-        const cached = this.cache.singleCache.get(match)
-        if (cached) {
-          return cached
+  extract<T extends Extraction>(
+    name: string,
+    cache: Map<string, T>,
+    method: (program: any, filePath: string) => T | undefined,
+  ) {
+    const calls = extractMethodCalls(this.fileContents, name)
+    for (const source of calls) {
+      const cached = cache.get(source)
+      if (cached) {
+        this.extractions.push(cached)
+        continue
+      }
+
+      try {
+        const tree = parse(source, {
+          ecmaVersion: 'latest',
+        })
+
+        const result = method(tree, this.filePath)
+        if (result) {
+          cache.set(source, result)
+          this.extractions.push(result)
         }
-
-        try {
-          const tree = parse(match, {
-            ecmaVersion: 'latest',
-          })
-
-          const result = extract(tree, this.filePath)
-          if (result) {
-            this.cache.singleCache.set(match, result)
-          }
-          return result
-        } catch (e) {
-          this.handleError(this.filePath, match, e)
-        }
-
-        return null
-      })
-      .filter(falsy)
-  }
-
-  /**
-   * Extract the text plural method calls.
-   */
-  extractPlural(): ExtractionPlural[] {
-    return extractMethodCalls(this.fileContents, '$textsPlural(')
-      .map((match) => {
-        const cached = this.cache.pluralCache.get(match)
-        if (cached) {
-          return cached
-        }
-        try {
-          const tree = parse(match, {
-            ecmaVersion: 'latest',
-          })
-          const result = extractPlural(tree, this.filePath)
-          if (result) {
-            this.cache.pluralCache.set(match, result)
-          }
-          return result
-        } catch (e) {
-          this.handleError(this.filePath, match, e)
-        }
-
-        return null
-      })
-      .filter(falsy)
+      } catch (e) {
+        this.handleError(e, source)
+      }
+    }
   }
 }

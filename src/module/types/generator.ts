@@ -3,7 +3,7 @@ import type { Extraction } from './extraction'
 export type BuiltInGeneratorMethod = 'drupal-graphql-texts' | 'json'
 
 export type GeneratorCallback = (
-  extractions: Map<string, Extraction>,
+  extractions: Extraction[],
 ) => string | Promise<string>
 
 export type EasyTextsGenerator = {

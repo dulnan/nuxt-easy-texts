@@ -3,11 +3,13 @@ import type { Nuxt, WatchEvent } from 'nuxt/schema'
 import type { Collector } from './Collector'
 import type { ModuleHelper } from './ModuleHelper'
 import type { ViteDevServer, WebSocketServer } from 'vite'
+import type { ExtractionError } from './CollectedFile'
 
 const POSSIBLE_EXTENSIONS = ['.js', '.ts', '.vue', '.mjs']
 
 export class DevModeHandler {
   private viteWebSocket: WebSocketServer | null = null
+  private isInit = true
 
   constructor(
     private nuxt: Nuxt,
@@ -24,6 +26,11 @@ export class DevModeHandler {
 
     // Nuxt will tell us once the templates have been updated.
     this.nuxt.hook('app:templatesGenerated', (_app, templates) => {
+      if (this.isInit) {
+        this.isInit = false
+        return
+      }
+
       const isAffected = templates.some((v) =>
         v.dst.includes('nuxt-easy-texts/keys'),
       )
@@ -49,13 +56,13 @@ export class DevModeHandler {
       ? providedFilePath
       : this.helper.resolvers.src.resolve(providedFilePath)
 
-    const { hasChanged, error } = await this.collector.handleWatchEvent(
+    const { errors } = await this.collector.handleWatchEvent(
       event,
       pathAbsolute,
     )
 
-    if (error) {
-      this.sendError(error)
+    if (errors?.length) {
+      // this.sendError(errors)
       return
     }
   }
@@ -64,14 +71,19 @@ export class DevModeHandler {
     this.viteWebSocket = server.ws
   }
 
-  private sendError(error: { message: string }) {
+  private sendError(errors: ExtractionError[]) {
     if (!this.viteWebSocket) {
       return
     }
+    this.helper.logDebug('Send vite error message')
     this.viteWebSocket.send({
       type: 'error',
       err: {
-        message: error.message,
+        message: errors
+          .map((error) => {
+            return `${error.filePath} - ${error.message} - ${error.source}`
+          })
+          .join('\n\n'),
         stack: '',
       },
     })

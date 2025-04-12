@@ -11,7 +11,7 @@ export default function (path: string): CollectorTemplate {
       path,
     },
     (extractions) => {
-      const fields: string = [...extractions.values()]
+      const fields: string = extractions
         .map((extraction) => {
           const fieldName = extraction.fullKey.replaceAll('.', '__')
           const args: Record<string, string | undefined> = {

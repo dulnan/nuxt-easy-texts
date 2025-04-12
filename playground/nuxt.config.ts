@@ -26,7 +26,7 @@ export default defineNuxtConfig({
       {
         outputPath: './texts.txt',
         generate: (extractions) => {
-          return [...extractions.values()]
+          return extractions
             .map((v) => {
               if (v.type === 'text') {
                 return `${v.fullKey}: ${v.defaultText}`

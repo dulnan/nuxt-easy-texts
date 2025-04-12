@@ -4,13 +4,14 @@ import { addServerTemplate, addTemplate, addTypeTemplate } from '@nuxt/kit'
 import { logger } from '../helpers'
 import type { CollectorTemplate } from '../templates/defineTemplate'
 import type { Extraction } from '../types/extraction'
-import { CollectedFile, parseKey } from './CollectedFile'
+import { CollectedFile, parseKey, type ExtractionError } from './CollectedFile'
 import type { ModuleHelper } from './ModuleHelper'
 import { Cache } from './Cache'
+import colors from 'picocolors'
 
 export type CollectorWatchEventResult = {
   hasChanged: boolean
-  error?: { message: string }
+  errors?: ExtractionError[]
 }
 
 export class Collector {
@@ -96,17 +97,25 @@ export class Collector {
   /**
    * Executes code gen and performs validation for operations.
    */
-  private async buildState() {
-    const extractions = new Map<string, Extraction>()
+  private async buildState(): Promise<{ errors: ExtractionError[] }> {
+    const extractionsMap = new Map<string, Extraction>()
+    const errors: ExtractionError[] = []
     for (const file of this.files.values()) {
       for (const extraction of file.extractions) {
-        extractions.set(extraction.fullKey, extraction)
+        extractionsMap.set(extraction.fullKey, extraction)
+      }
+      if (file.errors.length) {
+        errors.push(...file.errors)
       }
     }
 
     for (const extraction of this.globalExtractions) {
-      extractions.set(extraction.fullKey, extraction)
+      extractionsMap.set(extraction.fullKey, extraction)
     }
+
+    const extractions = [...extractionsMap.values()].sort((a, b) =>
+      b.fullKey.localeCompare(a.fullKey),
+    )
 
     for (const template of this.templates) {
       if (template.build) {
@@ -119,6 +128,28 @@ export class Collector {
         this.templateResult.set(template.options.path + 'buildTypes', content)
       }
     }
+
+    if (errors.length) {
+      logger.error('Invalid texts detected.')
+      const separator = '\n' + colors.gray('─'.repeat(80))
+      errors.forEach((error) => {
+        let boxMessage =
+          error.message +
+          separator +
+          '\n' +
+          colors.bold(
+            'file://./' + this.helper.toSourceRelative(error.filePath),
+          ) +
+          separator
+        const lines = error.source.split('\n').filter(Boolean)
+        lines.forEach((line) => {
+          boxMessage += '\n' + colors.bold(colors.red(line))
+        })
+        logger.box(boxMessage)
+      })
+    }
+
+    return { errors }
   }
 
   /**
@@ -133,9 +164,16 @@ export class Collector {
   public async init(): Promise<void> {
     try {
       await this.initDocuments()
-      await this.buildState()
+      const { errors } = await this.buildState()
+      if (errors.length) {
+        throw new Error('nuxt-easy-texts initialisation failed.')
+      }
     } catch (e) {
       logger.error(e)
+      // During dev mode, don't rethrow the error.
+      if (this.helper.isDev) {
+        return
+      }
       throw new Error('nuxt-easy-texts initialisation failed.')
     }
   }
@@ -256,9 +294,10 @@ export class Collector {
       }
 
       if (hasChanged) {
-        await this.buildState()
+        const { errors } = await this.buildState()
+        this.helper.logDebug('hasChanged: ' + hasChanged)
+        return { hasChanged, errors }
       }
-      this.helper.logDebug('hasChanged: ' + hasChanged)
     } catch (e) {
       logger.error('Failed to extract texts.')
       if (e instanceof Error) {
