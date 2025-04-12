@@ -11,7 +11,6 @@ export default defineBuildConfig({
     'webpack-sources',
     'webpack-virtual-modules',
     '@jridgewell/sourcemap-codec',
-    '#nuxt-easy-texts/types',
-    '#nuxt-easy-texts/generated-types',
+    '#nuxt-easy-texts/keys',
   ],
 })

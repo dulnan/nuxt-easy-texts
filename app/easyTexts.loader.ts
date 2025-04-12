@@ -1,4 +1,4 @@
-import { defineEasyTextsLoader } from '#nuxt-easy-texts/types'
+import { defineEasyTextsLoader } from './../src/runtime/loader'
 
 export default defineEasyTextsLoader(() => {
   return {

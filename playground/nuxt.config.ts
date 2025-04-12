@@ -1,6 +1,6 @@
 export default defineNuxtConfig({
   ssr: true,
-  modules: ['../src/module'],
+  modules: ['../src/module', '@nuxt/eslint'],
 
   imports: {
     autoImport: false,
@@ -26,7 +26,7 @@ export default defineNuxtConfig({
       {
         outputPath: './texts.txt',
         generate: (extractions) => {
-          return extractions
+          return [...extractions.values()]
             .map((v) => {
               if (v.type === 'text') {
                 return `${v.fullKey}: ${v.defaultText}`
@@ -40,5 +40,12 @@ export default defineNuxtConfig({
     globalTexts: { learnMore: 'Learn more' },
   },
 
-  compatibilityDate: '2024-08-25',
+  typescript: {
+    strict: true,
+  },
+
+  compatibilityDate: '2025-04-12',
+  future: {
+    compatibilityVersion: 4,
+  },
 })

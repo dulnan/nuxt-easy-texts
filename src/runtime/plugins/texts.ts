@@ -1,10 +1,10 @@
 import { defineNuxtPlugin, useState, watch } from '#imports'
-import getLoader from '#nuxt-easy-texts/loader'
+import { easyTextsLoader } from '#nuxt-easy-texts/loader'
 
 export default defineNuxtPlugin({
   name: 'nuxt-easy-texts',
   setup: async () => {
-    const loader = getLoader()
+    const loader = easyTextsLoader()
 
     const isDebug = useState('nuxt_easy_texts_debug_enabled', () => false)
 
@@ -36,7 +36,7 @@ export default defineNuxtPlugin({
       if (translations.value) {
         const candidate = translations.value[key]
         if (Array.isArray(candidate) && candidate.length === 2) {
-          return [candidate[0], candidate[1]]
+          return [candidate[0]!, candidate[1]!]
         }
       }
 

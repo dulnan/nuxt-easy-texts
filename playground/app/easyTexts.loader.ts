@@ -1,4 +1,4 @@
-import { defineEasyTextsLoader } from '#nuxt-easy-texts/types'
+import { defineEasyTextsLoader } from './../../src/runtime/loader'
 import { computed, useCurrentLanguage } from '#imports'
 
 export default defineEasyTextsLoader(() => {
@@ -10,7 +10,7 @@ export default defineEasyTextsLoader(() => {
         query: {
           language: language.value,
         },
-      }).then((v) => v)
+      }).then((v) => v || {})
     },
     reloadTrigger() {
       return computed(() => language.value)

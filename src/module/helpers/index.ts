@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { useLogger } from '@nuxt/kit'
 
 /**
  * Type check for falsy values.
@@ -12,7 +13,7 @@ export function falsy<T>(value: T): value is NonNullable<T> {
 
 export const fileExists = (
   path?: string,
-  extensions = ['js', 'ts'],
+  extensions = ['ts'],
 ): string | null => {
   if (!path) {
     return null
@@ -27,3 +28,5 @@ export const fileExists = (
 
   return extension ? `${path}.${extension}` : null
 }
+
+export const logger = useLogger('nuxt-easy-texts')

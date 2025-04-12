@@ -1,7 +1,7 @@
 import type { Plugin } from 'vite'
 import MagicString from 'magic-string'
 import { generate } from 'astring'
-import { getExpression } from '../Extractor'
+import { getExpression } from '../module/helpers/ast'
 
 const fileRegex = /\.(vue|js|ts|mjs)$/
 
@@ -80,7 +80,7 @@ export default function extractTexts(options: any = {}): Plugin {
     options.sourceMap !== false && options.sourcemap !== false
 
   return {
-    name: 'transform-file',
+    name: 'nuxt-easy-texts:transform-file',
 
     transform(source, id) {
       if (!fileRegex.test(id)) {
@@ -96,10 +96,11 @@ export default function extractTexts(options: any = {}): Plugin {
         const tree = this.parse(code)
         if (tree) {
           const node = getExpression(tree)
-          node.arguments = [node.arguments[0]]
-
-          const processed = generate(node)
-          magicString.replace(code, processed)
+          if (node) {
+            node.arguments = [node.arguments[0]!]
+            const processed = generate(node)
+            magicString.replace(code, processed)
+          }
         }
       })
 
@@ -107,13 +108,15 @@ export default function extractTexts(options: any = {}): Plugin {
         const tree = this.parse(code)
         if (tree) {
           const node = getExpression(tree)
-          // Only keep the first two arguments.
-          // e.g. $textsPlural('context.key', count, '1 year', '@count years')
-          // =>   $textsPlural('context.key', count)
-          node.arguments = node.arguments.slice(0, 2)
+          if (node) {
+            // Only keep the first two arguments.
+            // e.g. $textsPlural('context.key', count, '1 year', '@count years')
+            // =>   $textsPlural('context.key', count)
+            node.arguments = node.arguments.slice(0, 2)
 
-          const processed = generate(node)
-          magicString.replace(code, processed)
+            const processed = generate(node)
+            magicString.replace(code, processed)
+          }
         }
       })
 

@@ -1,6 +1,6 @@
-import { type ComputedRef } from '#imports'
+import type { ComputedRef } from '#imports'
 
-type EasyTextsLoader = {
+export type EasyTextsLoader = {
   /**
    * Load the correct texts for the current context.
    */
@@ -10,17 +10,6 @@ type EasyTextsLoader = {
    * Return a computed property that is used to setup a watcher to trigger reloading the texts.
    */
   reloadTrigger?: () => ComputedRef<string>
-}
-
-/**
- * Define the texts loader.
- *
- * This method should load the correct texts as an object.
- */
-export function defineEasyTextsLoader(
-  cb: () => EasyTextsLoader,
-): () => EasyTextsLoader {
-  return cb
 }
 
 /**

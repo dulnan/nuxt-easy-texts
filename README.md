@@ -87,7 +87,7 @@ you. To define a loader, create the following file in
 `~/app/easyTexts.loader.ts`:
 
 ```typescript
-import { defineEasyTextsLoader } from '#nuxt-easy-texts/types'
+import { defineEasyTextsLoader } from 'nuxt-easy-texts/loader'
 
 export default defineEasyTextsLoader(() => {
   const language = useCurrentLanguage()
@@ -288,7 +288,7 @@ property on the client side and will reload the texts by calling `load()` again
 on your loader when the value changes.
 
 ```typescript
-import { defineEasyTextsLoader } from '#nuxt-easy-texts/types'
+import { defineEasyTextsLoader } from 'nuxt-easy-texts/loader'
 
 export default defineEasyTextsLoader(() => {
   const language = useCurrentLanguage()
