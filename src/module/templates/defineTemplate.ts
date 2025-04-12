@@ -3,6 +3,7 @@ import type { Extraction } from '../types/extraction'
 
 type TemplateOptions = {
   path: string
+  virtual?: boolean
 }
 
 type CollectorTemplateCallback = (

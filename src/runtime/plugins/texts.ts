@@ -45,7 +45,11 @@ export default defineNuxtPlugin({
 
     if (import.meta.client && loader.reloadTrigger) {
       const trigger = loader.reloadTrigger()
-      watch(trigger, async () => {
+      watch(trigger, async () => {})
+    }
+
+    if (import.meta.hot) {
+      import.meta.hot.on('nuxt-easy-texts:reload', async () => {
         translations.value = await loader.load()
       })
     }

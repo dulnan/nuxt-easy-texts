@@ -38,6 +38,7 @@ export default defineNuxtConfig({
       },
     ],
     globalTexts: { learnMore: 'Learn more' },
+    debug: true,
   },
 
   typescript: {

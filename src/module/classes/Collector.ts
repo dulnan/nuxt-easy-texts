@@ -1,17 +1,16 @@
-import { basename, extname } from 'pathe'
+import { basename } from 'pathe'
 import type { WatchEvent } from 'nuxt/schema'
-import { addTemplate, addTypeTemplate } from '@nuxt/kit'
+import { addServerTemplate, addTemplate, addTypeTemplate } from '@nuxt/kit'
 import { logger } from '../helpers'
 import type { CollectorTemplate } from '../templates/defineTemplate'
 import type { Extraction } from '../types/extraction'
-import { CollectedFile } from './CollectedFile'
+import { CollectedFile, parseKey } from './CollectedFile'
 import type { ModuleHelper } from './ModuleHelper'
 import { Cache } from './Cache'
 
-const POSSIBLE_EXTENSIONS = ['js', 'ts', 'vue', 'mjs']
-
 export type CollectorWatchEventResult = {
   hasChanged: boolean
+  error?: { message: string }
 }
 
 export class Collector {
@@ -19,6 +18,11 @@ export class Collector {
    * All collected files.
    */
   private files = new Map<string, CollectedFile>()
+
+  /**
+   * The extractions provided by nuxt.config.ts
+   */
+  private globalExtractions: Extraction[] = []
 
   /**
    * All file paths provided by hooks.
@@ -48,6 +52,32 @@ export class Collector {
   constructor(helper: ModuleHelper) {
     this.helper = helper
     this.cache = new Cache()
+
+    this.globalExtractions = Object.entries(
+      this.helper.options.globalTexts,
+    ).map<Extraction>(([fullKey, value]) => {
+      const { key, context } = parseKey(fullKey)
+      if (typeof value === 'string') {
+        return {
+          type: 'text',
+          fullKey,
+          key,
+          context,
+          defaultText: value,
+          filePath: 'nuxt.config.ts',
+        }
+      }
+
+      return {
+        type: 'plural',
+        fullKey,
+        key,
+        context,
+        singular: value[0],
+        plural: value[1],
+        filePath: 'nuxt.config.ts',
+      }
+    })
   }
 
   public reset() {
@@ -72,6 +102,10 @@ export class Collector {
       for (const extraction of file.extractions) {
         extractions.set(extraction.fullKey, extraction)
       }
+    }
+
+    for (const extraction of this.globalExtractions) {
+      extractions.set(extraction.fullKey, extraction)
     }
 
     for (const template of this.templates) {
@@ -138,12 +172,10 @@ export class Collector {
   }
 
   private matchesPatternOrExists(filePath: string): boolean {
-    const extension = extname(filePath).toLowerCase()
     return (
-      POSSIBLE_EXTENSIONS.includes(extension),
       this.files.has(filePath) ||
-        this.hookFiles.has(filePath) ||
-        this.helper.matchesImportPattern(filePath)
+      this.hookFiles.has(filePath) ||
+      this.helper.matchesImportPattern(filePath)
     )
   }
 
@@ -211,6 +243,7 @@ export class Collector {
     filePath: string,
   ): Promise<CollectorWatchEventResult> {
     let hasChanged = false
+    this.helper.logDebug(`handleWatchEvent: ${event}` + filePath)
     try {
       if (event === 'add') {
         hasChanged = await this.handleAdd(filePath)
@@ -225,6 +258,7 @@ export class Collector {
       if (hasChanged) {
         await this.buildState()
       }
+      this.helper.logDebug('hasChanged: ' + hasChanged)
     } catch (e) {
       logger.error('Failed to extract texts.')
       if (e instanceof Error) {
@@ -236,22 +270,53 @@ export class Collector {
   }
 
   /**
+   * Adds a virtual template (not written to disk) for both Nuxt and Nitro.
+   *
+   * For some reason a template written to disk works for both Nuxt and Nitro,
+   * but a virtual template requires adding two templates.
+   */
+  private addVirtualTemplate(template: CollectorTemplate) {
+    const filename = template.options.path + '.js'
+    const getContents = () => this.getTemplate(template.options.path + 'build')
+
+    addTemplate({
+      filename,
+      getContents,
+    })
+
+    addServerTemplate({
+      // Since this is a virtual template, the name must match the final
+      // alias, example:
+      // - nuxt-graphql-middleware/foobar.mjs => #nuxt-graphql-middleware/foobar
+      //
+      // That way we can reference the same template using the alias in both
+      // Nuxt and Nitro environments.
+      filename: '#' + template.options.path,
+      getContents,
+    })
+  }
+
+  /**
    * Adds a template that dependes on Collector state.
    */
   public addTemplate(template: CollectorTemplate) {
     this.templates.push(template)
 
     if (template.build) {
-      const templateFileName = basename(template.options.path)
-      const filename = templateFileName.includes('.')
-        ? template.options.path
-        : templateFileName + '.js'
+      if (template.options.virtual) {
+        this.addVirtualTemplate(template)
+      } else {
+        const templateFileName = basename(template.options.path)
+        const filename = templateFileName.includes('.')
+          ? template.options.path
+          : template.options.path + '.js'
 
-      addTemplate({
-        filename,
-        write: true,
-        getContents: () => this.getTemplate(template.options.path + 'build'),
-      })
+        addTemplate({
+          filename,
+          write: true,
+          getContents: () => this.getTemplate(template.options.path + 'build'),
+        })
+      }
     }
 
     if (template.buildTypes) {

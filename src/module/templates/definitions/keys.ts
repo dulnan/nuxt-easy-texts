@@ -3,6 +3,7 @@ import { defineCollectorTemplate } from '../defineTemplate'
 export default defineCollectorTemplate(
   {
     path: 'nuxt-easy-texts/keys',
+    virtual: true,
   },
   (extractions) => {
     const keys = [...extractions.values()]

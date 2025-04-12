@@ -14,15 +14,24 @@
       <p>{{ textWithBrackets }}</p>
       <p>{{ completelyWeirdText }}</p>
     </section>
+
+    <section>
+      <ul>
+        <li v-for="key in keys" :key="key">{{ key }}</li>
+      </ul>
+    </section>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref, useNuxtApp } from '#imports'
+import { KEYS } from '#nuxt-easy-texts/keys'
 
 const { $texts, $textsPlural } = useNuxtApp()
 
 const count = ref(0)
+
+const keys = ref(KEYS)
 
 const text = computed(() => {
   if (count.value === 0) {

@@ -12,7 +12,8 @@ import {
 import { relative } from 'pathe'
 import type { Nuxt, ResolvedNuxtTemplate } from 'nuxt/schema'
 import micromatch from 'micromatch'
-import { fileExists } from '../helpers'
+import { fileExists, logger } from '../helpers'
+import type { InputLogObject } from 'consola'
 import type { StaticTemplate } from '../templates/defineTemplate'
 import type { ModuleOptions } from './../types/options'
 
@@ -83,6 +84,7 @@ export class ModuleHelper {
 
   public readonly isDev: boolean
   public readonly isModuleBuild: boolean
+  public readonly isDebug: boolean
 
   public readonly options: RequiredModuleOptions
 
@@ -96,6 +98,7 @@ export class ModuleHelper {
   ) {
     this.isModuleBuild =
       process.env.PLAYGROUND_MODULE_BUILD === 'true' && nuxt.options._prepare
+    this.isDebug = !!options.debug
 
     this.options = {
       pattern: options.pattern || defaultOptions.pattern,
@@ -260,6 +263,8 @@ export class ModuleHelper {
         [path]
       this.nuxt.options.typescript.tsConfig.compilerOptions.paths[name] = [path]
     }
+
+    this.logDebug('Applied build config')
   }
 
   public addTemplate(template: StaticTemplate) {
@@ -303,5 +308,16 @@ export class ModuleHelper {
         name,
       },
     ])
+  }
+
+  public logDebug(...args: any[]) {
+    if (this.isDebug) {
+      if (args.length === 0) {
+        logger.info('') // Handle empty case
+      } else {
+        // Pass the first argument as-is, then spread the rest
+        logger.info(args[0], ...args.slice(1))
+      }
+    }
   }
 }

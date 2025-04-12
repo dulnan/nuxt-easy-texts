@@ -35,7 +35,7 @@ function extractLiteral(
   }
 }
 
-function parseKey(v: string): { key: string; context?: string } {
+export function parseKey(v: string): { key: string; context?: string } {
   // e.g. 'global.homepage'
   // ['global', 'homepage']
   const [a, b] = v.split('.', 2)

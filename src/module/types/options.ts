@@ -22,7 +22,13 @@ export type ModuleOptions = {
    *   learnMore: 'Learn more',
    *   contact: 'Contact',
    *   next: 'Next',
+   *   searchTitle: ['1 result', '@count results'],
    * }
    */
-  globalTexts?: Record<string, string>
+  globalTexts?: Record<string, string | [string, string]>
+
+  /**
+   * Enables debug logging during dev.
+   */
+  debug?: boolean
 }

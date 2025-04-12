@@ -2,6 +2,7 @@
   <div style="padding-top: 100px; padding-left: 40px">
     <nav>
       <div>{{ siteName }}</div>
+      <div>{{ $texts('debugHmr', 'Test') }}</div>
       <div>
         <button @click="toggleDebug">
           {{ $texts('toggleDebugMode', 'Toggle debug mode') }}

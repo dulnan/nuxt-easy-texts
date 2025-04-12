@@ -12,6 +12,7 @@ import {
   generatorJson,
   TEMPLATES,
 } from './module/templates'
+import { DevModeHandler } from './module/classes/DevModeHandler'
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
@@ -55,19 +56,22 @@ export default defineNuxtModule<ModuleOptions>({
     helper.addAlias('#nuxt-easy-texts', helper.paths.moduleBuildDir)
     addVitePlugin(textsVitePlugin())
 
-    // Watch for file changes in dev mode.
-    if (nuxt.options.dev) {
-      nuxt.hook('builder:watch', async (event, providedFilePath) => {
-        // Hack: This is supposed to be absolute. But it's not. Sometimes.
-        // Let's make sure it's really absolute. We have to assume that the path
-        // is actually relative to the source directory. If not, HMR will be
-        // broken.
-        const pathAbsolute = providedFilePath.startsWith('/')
-          ? providedFilePath
-          : helper.resolvers.src.resolve(providedFilePath)
-        // Determine if the extractable texts in the file have changed.
-        await collector.handleWatchEvent(event, pathAbsolute)
-      })
+    helper.applyBuildConfig()
+
+    if (!nuxt.options.dev) {
+      return
     }
+
+    const devMode = new DevModeHandler(nuxt, collector, helper)
+    devMode.init()
   },
 })
+
+declare module 'vite/types/customEvent.d.ts' {
+  interface CustomEventMap {
+    /**
+     * Emitted when texts have been updated.
+     */
+    'nuxt-easy-texts:reload': undefined
+  }
+}

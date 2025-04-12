@@ -40,5 +40,8 @@ export default defineEventHandler((event) => {
   const query = getQuery(event)
   const language = (query.language as string | undefined) || 'en'
 
-  return translations[language]
+  return {
+    ...translations[language],
+    debugHmr: 'Test HMR: ' + Math.round(Math.random() * 1000000000).toString(),
+  }
 })
