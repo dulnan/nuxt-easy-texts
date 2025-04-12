@@ -1,4 +1,4 @@
-import type { EasyTextsLoader } from './types'
+import type { EasyTextsLoader } from './runtime/types'
 
 /**
  * Define the texts loader.

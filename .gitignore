@@ -3,6 +3,7 @@ lib
 dist
 .nuxt
 playground/.nuxt
+playground/.output
 graphql/translations.graphql
 playground/translations.graphql
 playground/fragment.easyTexts.graphql

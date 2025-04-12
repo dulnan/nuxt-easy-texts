@@ -1,6 +1,6 @@
 import type { EasyTextsGenerator } from './generator'
 
-export type ModuleOptions = {
+export interface ModuleOptions {
   /**
    * The pattern of source files to scan for translations.
    */

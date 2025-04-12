@@ -336,7 +336,10 @@ export default defineNuxtConfig({
 
     // Provide text keys and default values at build time.
     // Useful if you have keys that can't be extracted for some reason.
-    globalTexts: { learnMore: 'Learn more' },
+    globalTexts: {
+      learnMore: 'Learn more',
+      resultsTitle: ['1 result', '@count results'],
+    },
   },
 })
 ```

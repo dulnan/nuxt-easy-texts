@@ -1,18 +1,19 @@
 import { fileURLToPath } from 'url'
-import { defineNuxtModule, addVitePlugin } from '@nuxt/kit'
+import { defineNuxtModule, addBuildPlugin } from '@nuxt/kit'
 import { name, version } from '../package.json'
-import textsVitePlugin from './vitePlugin'
-import './types'
-import type { ModuleOptions } from './module/types/options'
-import { ModuleHelper } from './module/classes/ModuleHelper'
-import { Collector } from './module/classes/Collector'
+import textsVitePlugin from './build/vitePlugin'
+import type { ModuleOptions } from './build/types/options'
+import { ModuleHelper } from './build/classes/ModuleHelper'
+import { Collector } from './build/classes/Collector'
 import {
   generatorCustom,
   generatorDrupal,
   generatorJson,
   TEMPLATES,
-} from './module/templates'
-import { DevModeHandler } from './module/classes/DevModeHandler'
+} from './build/templates'
+import { DevModeHandler } from './build/classes/DevModeHandler'
+
+export type { ModuleOptions }
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
@@ -54,7 +55,7 @@ export default defineNuxtModule<ModuleOptions>({
     helper.addPlugin('texts')
     helper.addComposable('useEasyTexts')
     helper.addAlias('#nuxt-easy-texts', helper.paths.moduleBuildDir)
-    addVitePlugin(textsVitePlugin())
+    addBuildPlugin(textsVitePlugin(nuxt))
 
     helper.applyBuildConfig()
 

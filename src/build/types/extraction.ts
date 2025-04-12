@@ -5,6 +5,7 @@ export type ExtractionText = {
   context?: string
   defaultText?: string
   filePath: string
+  call?: MethodCall
 }
 
 export type ExtractionPlural = {
@@ -14,6 +15,19 @@ export type ExtractionPlural = {
   context?: string
   singular: string
   plural: string
+  filePath: string
+  call?: MethodCall
+}
+
+export type MethodCall = {
+  code: string
+  start: number
+  end: number
+}
+
+export type ExtractionError = {
+  call?: MethodCall
+  message: string
   filePath: string
 }
 

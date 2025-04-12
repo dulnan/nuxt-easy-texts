@@ -1,7 +1,11 @@
 import { defineNuxtPlugin, useState, watch } from '#imports'
 import { easyTextsLoader } from '#nuxt-easy-texts/loader'
+import type { EasyTextsFunctions } from '../types'
 
-export default defineNuxtPlugin({
+export default defineNuxtPlugin<{
+  texts: EasyTextsFunctions['$texts']
+  textsPlural: EasyTextsFunctions['$textsPlural']
+}>({
   name: 'nuxt-easy-texts',
   setup: async () => {
     const loader = easyTextsLoader()
@@ -19,7 +23,22 @@ export default defineNuxtPlugin({
       translations.value = await loader.load()
     }
 
-    const getSingleText = (key: string): string => {
+    if (import.meta.client) {
+      async function reload() {
+        translations.value = await loader.load()
+      }
+
+      if (loader.reloadTrigger) {
+        const trigger = loader.reloadTrigger()
+        watch(trigger, () => reload())
+      }
+
+      if (import.meta.hot) {
+        import.meta.hot.on('nuxt-easy-texts:reload', () => reload())
+      }
+    }
+
+    function getSingleText(key: string): string {
       if (translations.value) {
         const candidate = translations.value[key]
         if (typeof candidate === 'string') {
@@ -32,7 +51,7 @@ export default defineNuxtPlugin({
       return key
     }
 
-    const getPluralTexts = (key: string): [string, string] => {
+    function getPluralTexts(key: string): [string, string] {
       if (translations.value) {
         const candidate = translations.value[key]
         if (Array.isArray(candidate) && candidate.length === 2) {
@@ -41,20 +60,6 @@ export default defineNuxtPlugin({
       }
 
       return [key, key]
-    }
-
-    if (import.meta.client) {
-      async function reload() {
-        translations.value = await loader.load()
-      }
-      if (loader.reloadTrigger) {
-        const trigger = loader.reloadTrigger()
-        watch(trigger, () => reload())
-      }
-
-      if (import.meta.hot) {
-        import.meta.hot.on('nuxt-easy-texts:reload', () => reload())
-      }
     }
 
     return {
@@ -67,7 +72,7 @@ export default defineNuxtPlugin({
         },
         textsPlural: (
           key: string,
-          count: number,
+          count: number | null | undefined,
           _singular?: string,
           _plural?: string,
         ): string => {
@@ -77,7 +82,7 @@ export default defineNuxtPlugin({
           const [singular, plural] = getPluralTexts(key)
           return count === 1
             ? singular
-            : plural.replace('@count', count.toString())
+            : plural.replace('@count', (count || 0).toString())
         },
       },
     }

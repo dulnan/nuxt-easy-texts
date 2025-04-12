@@ -3,13 +3,15 @@
     <nav>
       <div>{{ siteName }}</div>
       <div>
-        {{ $texts('debugHmr', 'asdfaasdf asdfasdf Test foobar fasfasdfasdf') }}
+        {{ $texts('debugHmr', 'Foobar') }}
       </div>
+      <div>Fooobar</div>
       <div>
         <button @click="toggleDebug">
           {{ $texts('toggleDebugMode', 'Toggle debug mode') }}
         </button>
       </div>
+      <div>Foobar</div>
       <ul>
         <li>
           <NuxtLink to="/en">{{
@@ -30,16 +32,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useEasyTexts } from '#imports'
+import { useEasyTexts, useSiteContext } from '#imports'
 
-const { $texts, toggleDebug } = useEasyTexts()
+const { toggleDebug, $texts } = useEasyTexts()
 
-const siteName = computed(() => {
-  const a = $texts('a.siteName', 'nuxt-easy-texts')
-  const b = $texts('b.siteName', 'Playground')
-
-  return `${a} ${b}`
-})
-
-const foobar = 'asdfasdf'
+const { siteName } = useSiteContext()
 </script>

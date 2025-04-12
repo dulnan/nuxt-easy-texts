@@ -24,10 +24,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, useNuxtApp } from '#imports'
+import { computed, ref, useEasyTexts } from '#imports'
 import { KEYS } from '#nuxt-easy-texts/keys'
 
-const { $texts, $textsPlural } = useNuxtApp()
+const { $texts, $textsPlural } = useEasyTexts()
 
 const count = ref(0)
 
@@ -46,6 +46,8 @@ const textWithQuotes = computed(() => {
     count.value.toString(),
   )
 })
+
+$texts('toggleDebugMode')
 
 const textWithBrackets = computed(() => {
   return $texts(

@@ -1,16 +1,14 @@
 import { defineBuildConfig } from 'unbuild'
 
 export default defineBuildConfig({
+  entries: ['./src/loader.ts'],
   externals: [
-    '#imports',
-    'defu',
-    'unplugin',
+    'pathe',
     'magic-string',
-    'estree-walker',
+    'micromatch',
     'acorn',
-    'webpack-sources',
-    'webpack-virtual-modules',
-    '@jridgewell/sourcemap-codec',
+    '#imports',
     '#nuxt-easy-texts/keys',
+    '#nuxt-easy-texts/loader',
   ],
 })

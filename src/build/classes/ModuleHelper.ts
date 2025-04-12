@@ -23,7 +23,7 @@ type RequiredModuleOptions = WithRequired<
   'globalTexts' | 'generators' | 'pattern'
 >
 
-export const defaultOptions: RequiredModuleOptions = {
+const defaultOptions: RequiredModuleOptions = {
   pattern: [
     '~/components/**/*.{js,ts,vue}',
     '~/layouts/**/*.{js,ts,vue}',
@@ -320,11 +320,9 @@ export class ModuleHelper {
     ])
   }
 
-  public logDebug(...args: any[]) {
+  public logDebug(...args: unknown[]) {
     if (this.isDebug) {
-      if (args.length === 0) {
-        logger.info('') // Handle empty case
-      } else {
+      if (args.length !== 0) {
         // Pass the first argument as-is, then spread the rest
         logger.info(args[0], ...args.slice(1))
       }

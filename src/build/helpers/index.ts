@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import { useLogger } from '@nuxt/kit'
+import type { Extraction, ExtractionText } from '../types/extraction'
 
 /**
  * Type check for falsy values.
@@ -30,3 +31,9 @@ export const fileExists = (
 }
 
 export const logger = useLogger('nuxt-easy-texts')
+
+export function isSingleText(
+  extraction: Extraction,
+): extraction is ExtractionText {
+  return extraction.type === 'text'
+}

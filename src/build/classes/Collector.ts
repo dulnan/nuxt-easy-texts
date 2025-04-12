@@ -1,13 +1,14 @@
 import { basename } from 'pathe'
 import type { WatchEvent } from 'nuxt/schema'
 import { addServerTemplate, addTemplate, addTypeTemplate } from '@nuxt/kit'
-import { logger } from '../helpers'
+import { isSingleText, logger } from '../helpers'
 import type { CollectorTemplate } from '../templates/defineTemplate'
-import type { Extraction } from '../types/extraction'
-import { CollectedFile, parseKey, type ExtractionError } from './CollectedFile'
+import type { Extraction, ExtractionError } from '../types/extraction'
+import { CollectedFile } from './CollectedFile'
 import type { ModuleHelper } from './ModuleHelper'
 import { Cache } from './Cache'
 import colors from 'picocolors'
+import { parseKey } from '../helpers/ast'
 
 export type CollectorWatchEventResult = {
   hasChanged: boolean
@@ -56,7 +57,7 @@ export class Collector {
 
     this.globalExtractions = Object.entries(
       this.helper.options.globalTexts,
-    ).map<Extraction>(([fullKey, value]) => {
+    ).map(([fullKey, value]) => {
       const { key, context } = parseKey(fullKey)
       if (typeof value === 'string') {
         return {
@@ -77,6 +78,7 @@ export class Collector {
         singular: value[0],
         plural: value[1],
         filePath: 'nuxt.config.ts',
+        source: '',
       }
     })
   }
@@ -98,24 +100,113 @@ export class Collector {
    * Executes code gen and performs validation for operations.
    */
   private async buildState(): Promise<{ errors: ExtractionError[] }> {
+    this.helper.logDebug('buildState')
     const extractionsMap = new Map<string, Extraction>()
     const errors: ExtractionError[] = []
+    const singleDefaults = new Map<string, string>()
+    const pluralDefaults = new Map<string, [string, string]>()
+    const withoutDefaultTexts: Extraction[] = []
+
+    for (const extraction of this.globalExtractions) {
+      extractionsMap.set(extraction.fullKey, extraction)
+    }
+
     for (const file of this.files.values()) {
       for (const extraction of file.extractions) {
         extractionsMap.set(extraction.fullKey, extraction)
+        if (extraction.type === 'text') {
+          if (extraction.defaultText) {
+            const existing = singleDefaults.get(extraction.fullKey)
+            if (existing && existing !== extraction.defaultText) {
+              errors.push({
+                filePath: extraction.filePath,
+                call: extraction.call,
+                message: `$texts key "${extraction.fullKey}" has different default texts ("${existing}" vs. "${extraction.defaultText}").`,
+              })
+            } else {
+              singleDefaults.set(extraction.fullKey, extraction.defaultText)
+            }
+          } else {
+            withoutDefaultTexts.push(extraction)
+          }
+        } else {
+          if (extraction.singular && extraction.plural) {
+            const existing = pluralDefaults.get(extraction.fullKey)
+            if (
+              existing &&
+              (existing[0] !== extraction.singular ||
+                existing[1] !== extraction.plural)
+            ) {
+              let message = `$textsPlural key "${extraction.fullKey}" has multiple `
+
+              if (existing[0] !== extraction.singular) {
+                message += `singular texts ("${existing[0]}" vs. "${extraction.singular}")`
+              }
+              if (existing[1] !== extraction.plural) {
+                message += `and plural texts ("${existing[0]}" vs. ${extraction.plural})`
+              }
+
+              message += '.'
+              errors.push({
+                filePath: extraction.filePath,
+                call: extraction.call,
+                message,
+              })
+            } else {
+              pluralDefaults.set(extraction.fullKey, [
+                extraction.singular,
+                extraction.plural,
+              ])
+            }
+          } else {
+            withoutDefaultTexts.push(extraction)
+          }
+        }
       }
       if (file.errors.length) {
         errors.push(...file.errors)
       }
     }
 
-    for (const extraction of this.globalExtractions) {
-      extractionsMap.set(extraction.fullKey, extraction)
-    }
+    const extractions = [...extractionsMap.values()]
+      .sort((a, b) => b.fullKey.localeCompare(a.fullKey))
+      .map((extraction) => {
+        if (extraction.type === 'text') {
+          return {
+            ...extraction,
+            defaultText:
+              extraction.defaultText || singleDefaults.get(extraction.fullKey),
+          }
+        }
+        const defaults = pluralDefaults.get(extraction.fullKey)
+        return {
+          ...extraction,
+          singular: extraction.singular || defaults?.[0] || '',
+          plural: extraction.plural || defaults?.[1] || '',
+        }
+      })
 
-    const extractions = [...extractionsMap.values()].sort((a, b) =>
-      b.fullKey.localeCompare(a.fullKey),
-    )
+    for (const extraction of withoutDefaultTexts) {
+      if (isSingleText(extraction)) {
+        const hasDefaultText = singleDefaults.has(extraction.fullKey)
+        if (!hasDefaultText) {
+          errors.push({
+            message: `No default text exists for $texts key "${extraction.fullKey}".`,
+            call: extraction.call,
+            filePath: extraction.filePath,
+          })
+        }
+      } else {
+        const hasDefaultText = pluralDefaults.has(extraction.fullKey)
+        if (!hasDefaultText) {
+          errors.push({
+            message: `No default texts exists for $textsPlural key "${extraction.fullKey}".`,
+            call: extraction.call,
+            filePath: extraction.filePath,
+          })
+        }
+      }
+    }
 
     for (const template of this.templates) {
       if (template.build) {
@@ -130,26 +221,91 @@ export class Collector {
     }
 
     if (errors.length) {
-      logger.error('Invalid texts detected.')
-      const separator = '\n' + colors.gray('─'.repeat(80))
-      errors.forEach((error) => {
-        let boxMessage =
-          error.message +
-          separator +
-          '\n' +
-          colors.bold(
-            'file://./' + this.helper.toSourceRelative(error.filePath),
-          ) +
-          separator
-        const lines = error.source.split('\n').filter(Boolean)
-        lines.forEach((line) => {
-          boxMessage += '\n' + colors.bold(colors.red(line))
-        })
-        logger.box(boxMessage)
-      })
+      this.logErrors(errors)
     }
 
     return { errors }
+  }
+
+  private logErrors(errors: ExtractionError[]) {
+    logger.error('nuxt-easy-texts validation failed.')
+    const separator = '\n' + colors.gray('─'.repeat(80))
+    errors.forEach((error) => {
+      let boxMessage =
+        error.message +
+        separator +
+        '\n' +
+        colors.bold(
+          'file://./' + this.helper.toSourceRelative(error.filePath),
+        ) +
+        separator
+
+      if (error.call) {
+        const fileContents = this.files.get(error.filePath)?.fileContents
+
+        if (fileContents) {
+          // Find the line numbers.
+          const lines = fileContents.split('\n')
+          let lineNumber = 1
+          let currentPos = 0
+          let startLine = 0
+
+          // Find which line contains the start position.
+          for (const line of lines) {
+            currentPos += line.length + 1 // +1 for the newline character
+            if (currentPos >= error.call.start) {
+              startLine = lineNumber
+              break
+            }
+            lineNumber++
+          }
+
+          // Get context: 3 lines before and 3 lines after
+          const contextStart = Math.max(startLine - 3, 1)
+          const contextEnd = Math.min(startLine + 3, lines.length)
+
+          // Add context lines to the message
+          boxMessage += '\n\n'
+
+          for (let i = contextStart - 1; i < contextEnd; i++) {
+            const lineNum = i + 1
+            const lineContent = lines[i] || ''
+
+            // Check if this line contains part of the method call
+            const lineStartPos =
+              i === 0
+                ? 0
+                : lines
+                    .slice(0, i)
+                    .reduce((sum, line) => sum + line.length + 1, 0)
+            const lineEndPos = lineStartPos + lineContent.length
+
+            const containsCallStart =
+              lineStartPos <= error.call.start && error.call.start < lineEndPos
+            const containsCallEnd =
+              lineStartPos < error.call.end && error.call.end <= lineEndPos
+            const containedInCall =
+              error.call.start <= lineStartPos && lineEndPos <= error.call.end
+
+            const isPartOfCall =
+              containsCallStart || containsCallEnd || containedInCall
+
+            // Format line number
+            const lineNumStr = `${lineNum}`.padStart(4)
+
+            if (isPartOfCall) {
+              // This line contains part of the method call - show in red
+              boxMessage += `${lineNumStr} | ${colors.bold(colors.red(lineContent))}\n`
+            } else {
+              // Regular context line
+              boxMessage += `${lineNumStr} | ${lineContent}\n`
+            }
+          }
+        }
+      }
+
+      logger.box(boxMessage)
+    })
   }
 
   /**
@@ -168,8 +324,7 @@ export class Collector {
       if (errors.length) {
         throw new Error('nuxt-easy-texts initialisation failed.')
       }
-    } catch (e) {
-      logger.error(e)
+    } catch {
       // During dev mode, don't rethrow the error.
       if (this.helper.isDev) {
         return
@@ -238,16 +393,11 @@ export class Collector {
     }
 
     try {
-      const needsUpdate = await file.update()
-      if (!needsUpdate) {
-        return false
-      }
+      return await file.update()
     } catch {
       // Error: File is invalid (e.g. empty), so let's remove it.
       return this.handleUnlink(filePath)
     }
-
-    return true
   }
 
   private handleUnlink(filePath: string): boolean {
@@ -326,7 +476,7 @@ export class Collector {
     addServerTemplate({
       // Since this is a virtual template, the name must match the final
       // alias, example:
-      // - nuxt-graphql-middleware/foobar.mjs => #nuxt-graphql-middleware/foobar
+      // - nuxt-easy-texts/foobar.mjs => #nuxt-easy-texts/foobar
       //
       // That way we can reference the same template using the alias in both
       // Nuxt and Nitro environments.
@@ -359,7 +509,7 @@ export class Collector {
     }
 
     if (template.buildTypes) {
-      const filename = (template.options.path + '.d.ts') as any
+      const filename = (template.options.path + '.d.ts') as `${string}.d.ts`
       addTypeTemplate(
         {
           filename,

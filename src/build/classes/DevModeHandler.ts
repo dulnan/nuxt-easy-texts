@@ -3,7 +3,7 @@ import type { Nuxt, WatchEvent } from 'nuxt/schema'
 import type { Collector } from './Collector'
 import type { ModuleHelper } from './ModuleHelper'
 import type { ViteDevServer, WebSocketServer } from 'vite'
-import type { ExtractionError } from './CollectedFile'
+import type { ExtractionError } from '../types/extraction'
 
 const POSSIBLE_EXTENSIONS = ['.js', '.ts', '.vue', '.mjs']
 
@@ -81,7 +81,7 @@ export class DevModeHandler {
       err: {
         message: errors
           .map((error) => {
-            return `${error.filePath} - ${error.message} - ${error.source}`
+            return `${error.filePath} - ${error.message} - ${error.call?.code}`
           })
           .join('\n\n'),
         stack: '',

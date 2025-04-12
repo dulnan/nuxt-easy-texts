@@ -1,4 +1,4 @@
-import { defineEasyTextsLoader } from './../src/runtime/loader'
+import { defineEasyTextsLoader } from './../src/loader'
 
 export default defineEasyTextsLoader(() => {
   return {
