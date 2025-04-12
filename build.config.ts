@@ -7,6 +7,8 @@ export default defineBuildConfig({
     'magic-string',
     'micromatch',
     'acorn',
+    'unplugin',
+    'picomatch',
     '#imports',
     '#nuxt-easy-texts/keys',
     '#nuxt-easy-texts/loader',
