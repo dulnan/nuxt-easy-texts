@@ -3,15 +3,16 @@
     <nav>
       <div>{{ siteName }}</div>
       <div>
-        {{ $texts('debugHmr', 'Foobar') }}
+        <div>
+          <strong>Should contain a random number on HMR</strong>
+        </div>
+        <div>{{ $texts('debugHmr', 'Foobar') }}</div>
       </div>
-      <div>Fooobar</div>
       <div>
         <button @click="toggleDebug">
           {{ $texts('toggleDebugMode', 'Toggle debug mode') }}
         </button>
       </div>
-      <div>Foobar</div>
       <ul>
         <li>
           <NuxtLink to="/en">{{

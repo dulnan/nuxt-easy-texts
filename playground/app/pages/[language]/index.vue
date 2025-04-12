@@ -47,8 +47,6 @@ const textWithQuotes = computed(() => {
   )
 })
 
-$texts('toggleDebugMode')
-
 const textWithBrackets = computed(() => {
   return $texts(
     'textWithBrackets',
