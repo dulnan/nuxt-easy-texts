@@ -299,9 +299,7 @@ export class ModuleHelper {
   }
 
   public addPlugin(name: string) {
-    addPlugin(this.resolvers.module.resolve('./runtime/plugins/' + name), {
-      append: false,
-    })
+    addPlugin(this.resolvers.module.resolve('./runtime/plugins/' + name))
   }
 
   public addComposable(name: string) {

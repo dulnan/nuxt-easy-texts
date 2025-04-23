@@ -1,6 +1,6 @@
 {
   "name": "nuxt-easy-texts",
-  "version": "2.0.0-alpha.1",
+  "version": "2.0.0-alpha.2",
   "description": "Easy key-based text extractor and loader for Nuxt 3",
   "repository": {
     "type": "git",
@@ -33,7 +33,7 @@
     "dev": "nuxi dev playground --host",
     "typecheck": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit",
     "dev:build": "nuxi generate playground",
-    "dev:prepare": "MODULE_BUILDING=true nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground",
+    "dev:prepare": "PLAYGROUND_MODULE_BUILD=true nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground",
     "lint": "eslint ./src",
     "lint:fix": "eslint ./src --fix",
     "test": "vitest run",

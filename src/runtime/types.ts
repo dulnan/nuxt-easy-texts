@@ -5,8 +5,9 @@ import type {
   EasyTextsPlural,
   EasyTextPluralKey,
 } from '#nuxt-easy-texts/keys'
+import type { NuxtAppLiterals } from 'nuxt/app'
 
-export type EasyTextsLoader = {
+export type EasyTextsLoaderCallback = {
   /**
    * Load the correct texts for the current context.
    *
@@ -23,6 +24,18 @@ export type EasyTextsLoader = {
    * reloading the texts.
    */
   reloadTrigger?: () => ComputedRef<string>
+}
+
+export type EasyTextsLoaderOptions = {
+  /**
+   * Nuxt plugin dependencies that need to be executed before.
+   */
+  dependsOn?: NuxtAppLiterals['pluginName'][]
+}
+
+export type EasyTextsLoader = {
+  getLoader: () => EasyTextsLoaderCallback
+  options: EasyTextsLoaderOptions
 }
 
 export interface EasyTextsFunctions {

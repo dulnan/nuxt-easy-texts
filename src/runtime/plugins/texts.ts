@@ -1,14 +1,11 @@
 import { defineNuxtPlugin, useState, watch } from '#imports'
 import { easyTextsLoader } from '#nuxt-easy-texts/loader'
-import type { EasyTextsFunctions } from '../types'
 
-export default defineNuxtPlugin<{
-  texts: EasyTextsFunctions['$texts']
-  textsPlural: EasyTextsFunctions['$textsPlural']
-}>({
+export default defineNuxtPlugin<Record<string, unknown>>({
   name: 'nuxt-easy-texts',
+  dependsOn: easyTextsLoader.options.dependsOn,
   setup: async () => {
-    const loader = easyTextsLoader()
+    const loader = easyTextsLoader.getLoader()
 
     const isDebug = useState('nuxt_easy_texts_debug_enabled', () => false)
 

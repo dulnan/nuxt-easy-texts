@@ -1,4 +1,8 @@
-import type { EasyTextsLoader } from './runtime/types'
+import type {
+  EasyTextsLoaderCallback,
+  EasyTextsLoader,
+  EasyTextsLoaderOptions,
+} from './runtime/types'
 
 /**
  * Define the texts loader.
@@ -6,7 +10,8 @@ import type { EasyTextsLoader } from './runtime/types'
  * This method should load the correct texts as an object.
  */
 export function defineEasyTextsLoader(
-  cb: () => EasyTextsLoader,
-): () => EasyTextsLoader {
-  return cb
+  getLoader: () => EasyTextsLoaderCallback,
+  options: EasyTextsLoaderOptions = {},
+): EasyTextsLoader {
+  return { getLoader, options }
 }

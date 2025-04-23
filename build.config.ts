@@ -13,4 +13,7 @@ export default defineBuildConfig({
     '#nuxt-easy-texts/keys',
     '#nuxt-easy-texts/loader',
   ],
+  replace: {
+    'process.env.PLAYGROUND_MODULE_BUILD': 'undefined',
+  },
 })
