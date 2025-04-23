@@ -28,19 +28,22 @@ interface UseEasyTexts extends EasyTextsFunctions {
  */
 export function useEasyTexts(): UseEasyTexts {
   const { $texts, $textsPlural } = useNuxtApp()
-  const isDebugState = useState('nuxt_easy_texts_debug_enabled', () => false)
+  const isDebugState = useState<boolean>(
+    'nuxt_easy_texts_debug_enabled',
+    () => false,
+  )
 
-  const isDebug = computed(() => isDebugState.value)
+  const isDebug = computed<boolean>(() => isDebugState.value)
 
-  function enableDebug() {
+  function enableDebug(): void {
     isDebugState.value = true
   }
 
-  function disableDebug() {
+  function disableDebug(): void {
     isDebugState.value = false
   }
 
-  function toggleDebug() {
+  function toggleDebug(): void {
     isDebugState.value = !isDebugState.value
   }
 

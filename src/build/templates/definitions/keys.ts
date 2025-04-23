@@ -47,19 +47,38 @@ export const KEYS = [
 
     return `
 declare module '#nuxt-easy-texts/keys' {
+  /**
+   * The existing single text keys and their default texts.
+   */
   export type EasyTextsSingle = {
-    ${Object.values(single).sort().join(',\n   ')}
+  ${Object.values(single).sort().join(',\n   ')}
   }
 
+  /**
+   * The existing plural text keys and their default singular and plural texts.
+   */
   export type EasyTextsPlural = {
-    ${Object.values(plural).sort().join(',\n   ')}
+  ${Object.values(plural).sort().join(',\n   ')}
   }
 
+  /**
+   * A valid single text key.
+   */
   export type EasyTextSingleKey = keyof EasyTextsSingle
+
+  /**
+   * A valid plural text key.
+   */
   export type EasyTextPluralKey = keyof EasyTextsPlural
 
+  /**
+   * Any valid single or plural text key.
+   */
   export type EasyTextsKey = EasyTextSingleKey & EasyTextPluralKey
 
+  /**
+   * All text keys.
+   */
   export const KEYS: EasyTextsKey[]
 }
 `

@@ -7,7 +7,10 @@ export default defineNuxtPlugin<Record<string, unknown>>({
   setup: async () => {
     const loader = easyTextsLoader.getLoader()
 
-    const isDebug = useState('nuxt_easy_texts_debug_enabled', () => false)
+    const isDebug = useState<boolean>(
+      'nuxt_easy_texts_debug_enabled',
+      () => false,
+    )
 
     const translations = useState<Record<string, string | string[]> | null>(
       'nuxt_easy_texts',

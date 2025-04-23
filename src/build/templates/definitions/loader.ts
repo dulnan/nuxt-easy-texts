@@ -17,6 +17,9 @@ export { easyTextsLoader }
     return `import type { EasyTextsLoader } from '${helper.paths.runtimeTypes}'
 
 declare module '#nuxt-easy-texts/loader' {
+  /**
+   * The user provided easy texts loader.
+   */
   export const easyTextsLoader: EasyTextsLoader
 }
 `
