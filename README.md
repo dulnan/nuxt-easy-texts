@@ -99,7 +99,7 @@ export default defineEasyTextsLoader(() => {
       // the values are either a string (for $texts keys) or an array of
       // exactly two strings (for $textsPlural keys).
       //
-      // For our two examples above, the loader would return the following:
+      // For our two examples above, the loader should return the following:
       // {
       //   homeTitle: 'Welcome!',
       //   counter: ['One item', '@count items'],
@@ -110,6 +110,13 @@ export default defineEasyTextsLoader(() => {
         },
       })
     },
+    reloadTrigger() {
+      // Will call load() again whenever the language changes.
+      return computed(() => language.value)
+    },
+    // If your load() method depends on another Nuxt plugin to run before,
+    // you can define its name here.
+    dependsOn: ['name-of-another-plugin'],
   }
 })
 ```
@@ -209,7 +216,8 @@ fragment easyTexts on TextsLoader {
 
 ### Load the texts
 
-All default/singular/plural texts in your code are compiled away, for example:
+All default/singular/plural texts in your code are removed via a vite plugin,
+for example:
 
 ```typescript
 const { $texts, $textsPlural } = useEasyTexts()
