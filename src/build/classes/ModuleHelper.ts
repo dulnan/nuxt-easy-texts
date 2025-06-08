@@ -7,6 +7,7 @@ import {
   createResolver,
   resolveAlias,
   resolveFiles,
+  addComponent,
   type Resolver,
 } from '@nuxt/kit'
 import { relative } from 'pathe'
@@ -316,6 +317,16 @@ export class ModuleHelper {
         name,
       },
     ])
+  }
+
+  addComponent(name: string) {
+    addComponent({
+      filePath: this.resolvers.module.resolve(
+        `./runtime/components/${name}.vue`,
+      ),
+      name,
+      global: true,
+    })
   }
 
   public logDebug(...args: unknown[]) {

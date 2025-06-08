@@ -125,6 +125,23 @@ nuxt-easy-texts will call this method inside its plugin, right before it injects
 `$texts` and `$textsPlural`. Make sure that anything that requires these two
 methods is loaded **after** this plugin is initialized.
 
+### Partial Language Override
+
+If you need to override the language for parts of the page, you can do so using
+the `<EasyTextsLanguageOverride>` component. It takes a `language` prop and will
+call the `load()` method of your loader with the given language. It provides
+these overrides for all nested `$texts` and `$textsPlural` calls.
+
+In addition, the component will set a `lang` attribute to indicate that the
+child tree is in a different language.
+
+**Important:** For this to work, you _must_ use
+`const { $texts, $textsPlural } = useEasyTexts()` whenever an override is needed
+in a template! This is because these two global properties are provided in a
+plugin. Therefore, they can't use the usual provide/inject mechanism. Using
+`useEasyTexts()` will return **different** `$texts` and `$textsPlural`
+implementations that use overrides if available.
+
 ## How it works
 
 nuxt-easy-texts searches your Vue components and JS/TS files for all calls to

@@ -7,6 +7,8 @@ import type {
 } from '#nuxt-easy-texts/keys'
 import type { NuxtAppLiterals } from 'nuxt/app'
 
+export type TextsState = Record<string, string | string[]>
+
 export type EasyTextsLoaderCallback = {
   /**
    * Load the correct texts for the current context.
@@ -17,13 +19,20 @@ export type EasyTextsLoaderCallback = {
    * for $textsPlural, where the first item is the singular text and the
    * second item is the plural text).
    */
-  load: () => Promise<Record<string, string | string[]>>
+  load: (langcodeOverride?: string) => Promise<TextsState>
 
   /**
    * Return a computed property that is used to setup a watcher to trigger
    * reloading the texts.
    */
   reloadTrigger?: () => ComputedRef<string>
+
+  /**
+   * Return the current langcode.
+   *
+   * This method must be implemented when using the <EasyTextsLanguageOverride> component.
+   */
+  currentLanguage?: () => ComputedRef<string>
 }
 
 export type EasyTextsLoaderOptions = {

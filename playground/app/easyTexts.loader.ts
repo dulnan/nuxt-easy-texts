@@ -5,14 +5,17 @@ export default defineEasyTextsLoader(() => {
   const language = useCurrentLanguage()
 
   return {
-    load() {
+    load(langcodeOverride) {
       return $fetch('/api/load-texts', {
         query: {
-          language: language.value,
+          language: langcodeOverride || language.value,
         },
       }).then((v) => v || {})
     },
     reloadTrigger() {
+      return computed(() => language.value)
+    },
+    currentLanguage() {
       return computed(() => language.value)
     },
   }

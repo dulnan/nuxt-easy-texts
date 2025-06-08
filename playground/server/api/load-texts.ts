@@ -33,6 +33,7 @@ const translations: Record<string, Record<string, string | string[]>> = {
     buttonIncrement: '1 hinzufügen',
     textWithQuotes: 'Es hat "@count" Dinge!',
     textWithBrackets: 'Es hat "sehr viele" (@count) Dinge!',
+    alwaysGerman: 'Immer auf Deutsch',
   },
 }
 

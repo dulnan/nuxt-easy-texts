@@ -14,12 +14,6 @@
       <p>{{ textWithBrackets }}</p>
       <p>{{ completelyWeirdText }}</p>
     </section>
-
-    <section>
-      <ul>
-        <li v-for="key in keys" :key="key">{{ key }}</li>
-      </ul>
-    </section>
   </div>
 </template>
 

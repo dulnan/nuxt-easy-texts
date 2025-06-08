@@ -1,5 +1,7 @@
 import { defineNuxtPlugin, useState, watch } from '#imports'
 import { easyTextsLoader } from '#nuxt-easy-texts/loader'
+import { getPluralTexts, getSingleText } from '../helpers/textsFunctions'
+import type { TextsState } from '../types'
 
 export default defineNuxtPlugin<Record<string, unknown>>({
   name: 'nuxt-easy-texts',
@@ -12,12 +14,9 @@ export default defineNuxtPlugin<Record<string, unknown>>({
       () => false,
     )
 
-    const translations = useState<Record<string, string | string[]> | null>(
-      'nuxt_easy_texts',
-      () => {
-        return null
-      },
-    )
+    const translations = useState<TextsState | null>('nuxt_easy_texts', () => {
+      return null
+    })
 
     if (!translations.value) {
       translations.value = await loader.load()
@@ -38,37 +37,10 @@ export default defineNuxtPlugin<Record<string, unknown>>({
       }
     }
 
-    function getSingleText(key: string): string {
-      if (translations.value) {
-        const candidate = translations.value[key]
-        if (typeof candidate === 'string') {
-          return candidate
-        } else if (Array.isArray(candidate)) {
-          return candidate[0] || key
-        }
-      }
-
-      return key
-    }
-
-    function getPluralTexts(key: string): [string, string] {
-      if (translations.value) {
-        const candidate = translations.value[key]
-        if (Array.isArray(candidate) && candidate.length === 2) {
-          return [candidate[0]!, candidate[1]!]
-        }
-      }
-
-      return [key, key]
-    }
-
     return {
       provide: {
         texts: (key: string, _defaultText?: string): string => {
-          if (isDebug.value) {
-            return key
-          }
-          return getSingleText(key)
+          return getSingleText(key, isDebug.value, translations.value)
         },
         textsPlural: (
           key: string,
@@ -76,13 +48,7 @@ export default defineNuxtPlugin<Record<string, unknown>>({
           _singular?: string,
           _plural?: string,
         ): string => {
-          if (isDebug.value) {
-            return key
-          }
-          const [singular, plural] = getPluralTexts(key)
-          return count === 1
-            ? singular
-            : plural.replace('@count', (count || 0).toString())
+          return getPluralTexts(key, count, isDebug.value, translations.value)
         },
       },
     }

@@ -1,5 +1,13 @@
-import { computed, useNuxtApp, useState, type ComputedRef } from '#imports'
-import type { EasyTextsFunctions } from './../types'
+import {
+  computed,
+  useNuxtApp,
+  useState,
+  inject,
+  type ComputedRef,
+  type Ref,
+} from '#imports'
+import { getPluralTexts, getSingleText } from '../helpers/textsFunctions'
+import type { EasyTextsFunctions, TextsState } from './../types'
 
 interface UseEasyTexts extends EasyTextsFunctions {
   /**
@@ -27,13 +35,33 @@ interface UseEasyTexts extends EasyTextsFunctions {
  * Use the nuxt-easy-texts helper.
  */
 export function useEasyTexts(): UseEasyTexts {
-  const { $texts, $textsPlural } = useNuxtApp()
+  // Provided by <EasyTextsLanguageOverride>.
+  const override = inject<Ref<TextsState | null> | null>(
+    'nuxt_easy_texts_override',
+    null,
+  )
+
   const isDebugState = useState<boolean>(
     'nuxt_easy_texts_debug_enabled',
     () => false,
   )
 
   const isDebug = computed<boolean>(() => isDebugState.value)
+
+  const app = useNuxtApp()
+
+  // If an override is set, return a method that uses the overrides instead.
+  const textsFunction = override
+    ? function (key: string) {
+        return getSingleText(key, isDebug.value, override.value)
+      }
+    : app.$texts
+
+  const textsPluralFunction = override
+    ? function (key: string, count: string | number | undefined | null) {
+        return getPluralTexts(key, count, isDebug.value, override.value)
+      }
+    : app.$textsPlural
 
   function enableDebug(): void {
     isDebugState.value = true
@@ -48,8 +76,8 @@ export function useEasyTexts(): UseEasyTexts {
   }
 
   return {
-    $texts,
-    $textsPlural,
+    $texts: textsFunction as EasyTextsFunctions['$texts'],
+    $textsPlural: textsPluralFunction as EasyTextsFunctions['$textsPlural'],
     isDebug,
     enableDebug,
     disableDebug,
