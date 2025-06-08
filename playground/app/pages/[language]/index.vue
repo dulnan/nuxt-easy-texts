@@ -9,10 +9,36 @@
       <button @click="count++">
         {{ $texts('buttonIncrement', 'Add 1') }}
       </button>
+      <label>
+        <div>Name</div>
+        <input type="text" v-model="name" />
+      </label>
       <h3>{{ text }}</h3>
       <p>{{ textWithQuotes }}</p>
       <p>{{ textWithBrackets }}</p>
       <p>{{ completelyWeirdText }}</p>
+      <div>
+        <div>
+          {{
+            $texts('singleReplacement', 'The current name is "@name"', {
+              '@name': name,
+            })
+          }}
+        </div>
+        <div>
+          {{
+            $textsPlural(
+              'pluralReplacements',
+              count,
+              'There is one person named "@name"',
+              'The are @count people named "@name"',
+              {
+                '@name': name,
+              },
+            )
+          }}
+        </div>
+      </div>
     </section>
   </div>
 </template>
@@ -24,6 +50,7 @@ import { KEYS } from '#nuxt-easy-texts/keys'
 const { $texts, $textsPlural } = useEasyTexts()
 
 const count = ref(0)
+const name = ref('John')
 
 const keys = ref(KEYS)
 

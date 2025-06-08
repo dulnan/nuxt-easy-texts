@@ -5,9 +5,7 @@
 </template>
 
 <script lang="ts" setup>
-import { provide, computed, useAsyncData } from '#imports'
-import { easyTextsLoader } from '#nuxt-easy-texts/loader'
-import type { TextsState } from '../types'
+import { provide, computed, useNuxtApp, ref, watch } from '#imports'
 
 const props = withDefaults(
   defineProps<{
@@ -19,37 +17,34 @@ const props = withDefaults(
   },
 )
 
-const loader = easyTextsLoader.getLoader()
+const { $nuxtEasyTexts } = useNuxtApp()
 
-if (!loader.currentLanguage) {
-  throw new Error(
-    'The currentLanguage() method must be implemented in easyTexts.loader.ts when using the <EasyTextsLanguageOverride> component.',
+const overrideLanguage = computed(() => props.language)
+
+const translations = ref(
+  await $nuxtEasyTexts.loadTranslationsForLanguage(overrideLanguage.value),
+)
+
+async function reloadTranslations(language: string) {
+  translations.value =
+    await $nuxtEasyTexts.loadTranslationsForLanguage(language)
+}
+
+watch(overrideLanguage, reloadTranslations)
+
+if (import.meta.hot) {
+  import.meta.hot.on('nuxt-easy-texts:reload', () =>
+    reloadTranslations(overrideLanguage.value),
   )
 }
 
-const currentLanguage = loader.currentLanguage()
-
-const asyncKey = computed(() => 'nuxt-easy-texts:override:' + props.language)
-
-const { data, refresh } = await useAsyncData<TextsState>(
-  asyncKey.value,
-  () => loader.load(props.language),
-  {
-    watch: [asyncKey],
-  },
-)
-
-if (import.meta.hot) {
-  import.meta.hot.on('nuxt-easy-texts:reload', () => refresh())
-}
-
 const langAttribute = computed(() => {
-  if (currentLanguage.value !== props.language) {
+  if ($nuxtEasyTexts.currentLanguage.value !== props.language) {
     return props.language
   }
 
   return undefined
 })
 
-provide('nuxt_easy_texts_override', data)
+provide('nuxt_easy_texts_override', translations)
 </script>

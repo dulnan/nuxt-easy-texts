@@ -1,7 +1,13 @@
 <template>
   <div>
     <h2>Test EasyTextsLanguageOverride</h2>
-    <p>{{ $texts('alwaysGerman', 'Always German') }}</p>
+    <p>
+      {{
+        $texts('languageOverrideLabel', 'Always @language', {
+          '@language': languageLabel,
+        })
+      }}
+    </p>
     <table>
       <tbody>
         <tr v-for="key in keys" :key>
@@ -14,8 +20,16 @@
 </template>
 
 <script lang="ts" setup>
-import { useEasyTexts } from '#imports'
+import { useEasyTexts, computed } from '#imports'
 import type { EasyTextSingleKey } from '#nuxt-easy-texts/keys'
+
+const props = defineProps<{
+  language: string
+}>()
+
+const languageLabel = computed(() =>
+  props.language === 'de' ? 'Deutsch' : 'English',
+)
 
 const keys: EasyTextSingleKey[] = [
   'toggleDebugMode',

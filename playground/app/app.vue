@@ -7,16 +7,15 @@
       <button @click="onClick">Force language: {{ forceLanguage }}</button>
     </div>
     <EasyTextsLanguageOverride :language="forceLanguage">
-      <TestOverride />
+      <TestOverride :language="forceLanguage" />
     </EasyTextsLanguageOverride>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, useCurrentLanguage } from '#imports'
+import { ref } from '#imports'
 
-const language = useCurrentLanguage()
-const forceLanguage = ref(language.value)
+const forceLanguage = ref('de')
 
 function onClick() {
   forceLanguage.value = forceLanguage.value === 'de' ? 'en' : 'de'

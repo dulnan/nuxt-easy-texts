@@ -39,8 +39,13 @@ export default function extractTexts(nuxt: Nuxt) {
           const tree = this.parse(call.code) as Node
           const node = getExpression(tree)
           if (node) {
-            // Only keep the first argument (the key).
-            node.arguments = [node.arguments[0]!]
+            // Only keep the first argument (the key) and the third (replacements).
+            const args = node.arguments
+            node.arguments = [args[0]!]
+            const replacements = args[2]
+            if (replacements) {
+              node.arguments.push(replacements)
+            }
             const processed = generate(node)
             s.replace(call.code, processed)
           }
@@ -50,10 +55,15 @@ export default function extractTexts(nuxt: Nuxt) {
           const tree = this.parse(call.code) as Node
           const node = getExpression(tree)
           if (node) {
-            // Only keep the first two arguments.
-            // e.g. $textsPlural('context.key', count, '1 year', '@count years')
-            // =>   $textsPlural('context.key', count)
-            node.arguments = node.arguments.slice(0, 2)
+            // Only keep the first two arguments and the fifth (replacements).
+            // e.g. $textsPlural('context.key', count, '1 year', '@count years', { '@name': name })
+            // =>   $textsPlural('context.key', count, { '@name': name })
+            const args = node.arguments
+            node.arguments = args.slice(0, 2)
+            const replacements = args[4]
+            if (replacements) {
+              node.arguments.push(replacements)
+            }
             const processed = generate(node)
             s.replace(call.code, processed)
           }

@@ -1,16 +1,31 @@
-import type { TextsState } from '../types'
+import type { Replacements, TextsState } from '../types'
+
+function replace(text: string, replacements?: Replacements): string {
+  if (!replacements) {
+    return text
+  }
+
+  let replaced = text
+
+  for (const [search, replace] of Object.entries(replacements)) {
+    replaced = replaced.replaceAll(search, replace.toString())
+  }
+
+  return replaced
+}
 
 export function getSingleText(
   key: string,
   isDebug: boolean,
   texts: TextsState | null,
+  replacements?: Replacements,
 ): string {
   if (texts && !isDebug) {
     const candidate = texts[key]
     if (typeof candidate === 'string') {
-      return candidate
-    } else if (Array.isArray(candidate)) {
-      return candidate[0] || key
+      return replace(candidate, replacements)
+    } else if (Array.isArray(candidate) && candidate[0]) {
+      return replace(candidate[0], replacements)
     }
   }
 
@@ -22,13 +37,16 @@ export function getPluralTexts(
   count: number | string | null | undefined,
   isDebug: boolean,
   texts: TextsState | null,
+  replacements?: Replacements,
 ): string {
   if (texts && !isDebug) {
     const candidate = texts[key]
     if (Array.isArray(candidate) && candidate.length === 2) {
-      return count === 1 || count === '1'
-        ? candidate[0]!
-        : candidate[1]!.replace('@count', (count || 0).toString())
+      const text =
+        count === 1 || count === '1'
+          ? candidate[0]!
+          : candidate[1]!.replace('@count', (count || 0).toString())
+      return replace(text, replacements)
     }
   }
 

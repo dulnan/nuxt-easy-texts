@@ -9,14 +9,17 @@ export default defineStaticTemplate(
     return 'export {}'
   },
   (helper) => {
-    return `import type { EasyTextsFunctions } from '${helper.paths.runtimeTypes}'
+    return `import type { EasyTextsFunctions, NuxtEasyTextsApp } from '${helper.paths.runtimeTypes}'
 
 declare module 'vue' {
   interface ComponentCustomProperties extends EasyTextsFunctions { }
 }
 
 declare module '#app' {
-  interface NuxtApp extends EasyTextsFunctions { }
+  interface NuxtAppWithEasyTexts {
+    $nuxtEasyTexts: NuxtEasyTextsApp
+  }
+  interface NuxtApp extends EasyTextsFunctions, NuxtAppWithEasyTexts { }
 }
 `
   },

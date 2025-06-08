@@ -7,7 +7,7 @@ import {
   type Ref,
 } from '#imports'
 import { getPluralTexts, getSingleText } from '../helpers/textsFunctions'
-import type { EasyTextsFunctions, TextsState } from './../types'
+import type { EasyTextsFunctions, Replacements, TextsState } from './../types'
 
 interface UseEasyTexts extends EasyTextsFunctions {
   /**
@@ -52,14 +52,24 @@ export function useEasyTexts(): UseEasyTexts {
 
   // If an override is set, return a method that uses the overrides instead.
   const textsFunction = override
-    ? function (key: string) {
-        return getSingleText(key, isDebug.value, override.value)
+    ? function (key: string, replacements?: Replacements) {
+        return getSingleText(key, isDebug.value, override.value, replacements)
       }
     : app.$texts
 
   const textsPluralFunction = override
-    ? function (key: string, count: string | number | undefined | null) {
-        return getPluralTexts(key, count, isDebug.value, override.value)
+    ? function (
+        key: string,
+        count: string | number | undefined | null,
+        replacements?: Replacements,
+      ) {
+        return getPluralTexts(
+          key,
+          count,
+          isDebug.value,
+          override.value,
+          replacements,
+        )
       }
     : app.$textsPlural
 

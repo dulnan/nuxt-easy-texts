@@ -1,7 +1,7 @@
-import { defineNuxtPlugin, useState, watch } from '#imports'
+import { computed, defineNuxtPlugin, useState, watch } from '#imports'
 import { easyTextsLoader } from '#nuxt-easy-texts/loader'
 import { getPluralTexts, getSingleText } from '../helpers/textsFunctions'
-import type { TextsState } from '../types'
+import type { Replacements, TextsState } from '../types'
 
 export default defineNuxtPlugin<Record<string, unknown>>({
   name: 'nuxt-easy-texts',
@@ -9,46 +9,92 @@ export default defineNuxtPlugin<Record<string, unknown>>({
   setup: async () => {
     const loader = easyTextsLoader.getLoader()
 
+    const currentLanguage =
+      'currentLanguage' in loader
+        ? loader.currentLanguage()
+        : loader.reloadTrigger
+          ? loader.reloadTrigger()
+          : computed(() => 'und')
+
     const isDebug = useState<boolean>(
       'nuxt_easy_texts_debug_enabled',
       () => false,
     )
 
-    const translations = useState<TextsState | null>('nuxt_easy_texts', () => {
-      return null
-    })
+    const translations = useState<Record<string, TextsState>>(
+      'nuxt_easy_texts',
+      () => {
+        return {}
+      },
+    )
 
-    if (!translations.value) {
-      translations.value = await loader.load()
+    if (!translations.value[currentLanguage.value]) {
+      translations.value[currentLanguage.value] = await loader.load(
+        currentLanguage.value,
+      )
+    }
+
+    async function loadTranslationsForLanguage(
+      language: string,
+      force?: boolean,
+    ): Promise<TextsState> {
+      if (translations.value[language] && !force) {
+        return translations.value[language]
+      }
+
+      const data = await loader.load(language)
+      translations.value[language] = data
+      return data
     }
 
     if (import.meta.client) {
-      async function reload() {
-        translations.value = await loader.load()
-      }
-
-      if (loader.reloadTrigger) {
-        const trigger = loader.reloadTrigger()
-        watch(trigger, () => reload())
-      }
-
-      if (import.meta.hot) {
-        import.meta.hot.on('nuxt-easy-texts:reload', () => reload())
-      }
+      watch(currentLanguage, (newLanguage) => {
+        loadTranslationsForLanguage(newLanguage)
+      })
     }
+
+    if (import.meta.hot) {
+      import.meta.hot.on('nuxt-easy-texts:reload', () =>
+        loadTranslationsForLanguage(currentLanguage.value, true),
+      )
+    }
+
+    const currentTranslations = computed<TextsState>(() => {
+      return translations.value[currentLanguage.value] || {}
+    })
 
     return {
       provide: {
-        texts: (key: string, _defaultText?: string): string => {
-          return getSingleText(key, isDebug.value, translations.value)
+        nuxtEasyTexts: {
+          loadTranslationsForLanguage,
+          currentLanguage,
         },
+
+        // The method signature does not match the one of $texts because the
+        // vite plugin removes the default text from the arguments.
+        texts: (key: string, replacements?: Replacements): string => {
+          return getSingleText(
+            key,
+            isDebug.value,
+            currentTranslations.value,
+            replacements,
+          )
+        },
+
+        // The method signature does not match the one of $texts because the
+        // vite plugin removes the default text from the arguments.
         textsPlural: (
           key: string,
           count: number | null | undefined,
-          _singular?: string,
-          _plural?: string,
+          replacements?: Replacements,
         ): string => {
-          return getPluralTexts(key, count, isDebug.value, translations.value)
+          return getPluralTexts(
+            key,
+            count,
+            isDebug.value,
+            currentTranslations.value,
+            replacements,
+          )
         },
       },
     }
