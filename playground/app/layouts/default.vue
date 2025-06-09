@@ -1,5 +1,6 @@
 <template>
   <div style="padding-top: 100px; padding-left: 40px">
+    <EasyTextsDebugOverlay v-if="isDebug" />
     <nav>
       <div>{{ siteName }}</div>
       <div>
@@ -35,7 +36,7 @@
 <script setup lang="ts">
 import { useEasyTexts, useSiteContext } from '#imports'
 
-const { toggleDebug, $texts } = useEasyTexts()
+const { toggleDebug, $texts, isDebug } = useEasyTexts()
 
 const { siteName } = useSiteContext()
 </script>

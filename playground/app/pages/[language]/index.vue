@@ -2,6 +2,7 @@
   <div>
     <h1>{{ $texts('homepageTitle', 'Welcome to our homepage!') }}</h1>
 
+
     <section>
       <button @click="count--">
         {{ $texts('buttonDecrement', 'Remove 1') }}

@@ -20,7 +20,11 @@ export function getSingleText(
   texts: TextsState | null,
   replacements?: Replacements,
 ): string {
-  if (texts && !isDebug) {
+  if (isDebug) {
+    return `@{${key}}`
+  }
+
+  if (texts) {
     const candidate = texts[key]
     if (typeof candidate === 'string') {
       return replace(candidate, replacements)
@@ -39,7 +43,10 @@ export function getPluralTexts(
   texts: TextsState | null,
   replacements?: Replacements,
 ): string {
-  if (texts && !isDebug) {
+  if (isDebug) {
+    return `@{${key}}`
+  }
+  if (texts) {
     const candidate = texts[key]
     if (Array.isArray(candidate) && candidate.length === 2) {
       const text =

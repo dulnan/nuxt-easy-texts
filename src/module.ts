@@ -56,6 +56,7 @@ export default defineNuxtModule<ModuleOptions>({
     helper.addComposable('useEasyTexts')
     helper.addAlias('#nuxt-easy-texts', helper.paths.moduleBuildDir)
     helper.addComponent('EasyTextsLanguageOverride')
+    helper.addComponent('EasyTextsDebugOverlay')
     addBuildPlugin(textsVitePlugin(nuxt))
 
     helper.applyBuildConfig()
