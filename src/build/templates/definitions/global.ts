@@ -19,6 +19,7 @@ declare module '#app' {
   interface NuxtAppWithEasyTexts {
     $nuxtEasyTexts: NuxtEasyTextsApp
   }
+
   interface NuxtApp extends EasyTextsFunctions, NuxtAppWithEasyTexts { }
 }
 `

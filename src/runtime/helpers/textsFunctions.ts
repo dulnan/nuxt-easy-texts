@@ -1,4 +1,5 @@
 import type { Replacements, TextsState } from '../types'
+import { toDebug } from './debug'
 
 function replace(text: string, replacements?: Replacements): string {
   if (!replacements) {
@@ -20,16 +21,12 @@ export function getSingleText(
   texts: TextsState | null,
   replacements?: Replacements,
 ): string {
-  if (isDebug) {
-    return `@{${key}}`
-  }
-
   if (texts) {
     const candidate = texts[key]
     if (typeof candidate === 'string') {
-      return replace(candidate, replacements)
+      return toDebug(key, replace(candidate, replacements), isDebug)
     } else if (Array.isArray(candidate) && candidate[0]) {
-      return replace(candidate[0], replacements)
+      return toDebug(key, replace(candidate[0], replacements), isDebug)
     }
   }
 
@@ -43,9 +40,6 @@ export function getPluralTexts(
   texts: TextsState | null,
   replacements?: Replacements,
 ): string {
-  if (isDebug) {
-    return `@{${key}}`
-  }
   if (texts) {
     const candidate = texts[key]
     if (Array.isArray(candidate) && candidate.length === 2) {
@@ -53,7 +47,7 @@ export function getPluralTexts(
         count === 1 || count === '1'
           ? candidate[0]!
           : candidate[1]!.replace('@count', (count || 0).toString())
-      return replace(text, replacements)
+      return toDebug(key, replace(text, replacements), isDebug)
     }
   }
 

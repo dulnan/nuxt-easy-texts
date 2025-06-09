@@ -62,6 +62,32 @@ export default defineNuxtPlugin<Record<string, unknown>>({
     const currentTranslations = computed<TextsState>(() => {
       return translations.value[currentLanguage.value] || {}
     })
+    // The method signature does not match the one of $texts because the
+    // vite plugin removes the default text from the arguments.
+    const $texts = (key: string, replacements?: Replacements): string => {
+      return getSingleText(
+        key,
+        isDebug.value,
+        currentTranslations.value,
+        replacements,
+      )
+    }
+
+    // The method signature does not match the one of $texts because the
+    // vite plugin removes the default text from the arguments.
+    const textsPlural = (
+      key: string,
+      count: number | null | undefined,
+      replacements?: Replacements,
+    ): string => {
+      return getPluralTexts(
+        key,
+        count,
+        isDebug.value,
+        currentTranslations.value,
+        replacements,
+      )
+    }
 
     return {
       provide: {
@@ -69,33 +95,8 @@ export default defineNuxtPlugin<Record<string, unknown>>({
           loadTranslationsForLanguage,
           currentLanguage,
         },
-
-        // The method signature does not match the one of $texts because the
-        // vite plugin removes the default text from the arguments.
-        texts: (key: string, replacements?: Replacements): string => {
-          return getSingleText(
-            key,
-            isDebug.value,
-            currentTranslations.value,
-            replacements,
-          )
-        },
-
-        // The method signature does not match the one of $texts because the
-        // vite plugin removes the default text from the arguments.
-        textsPlural: (
-          key: string,
-          count: number | null | undefined,
-          replacements?: Replacements,
-        ): string => {
-          return getPluralTexts(
-            key,
-            count,
-            isDebug.value,
-            currentTranslations.value,
-            replacements,
-          )
-        },
+        texts: $texts,
+        textsPlural: textsPlural,
       },
     }
   },

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="app">
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
@@ -25,5 +25,14 @@ function onClick() {
 <style lang="css">
 body {
   font-family: sans-serif;
+  background: #eee;
+}
+
+.app {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  padding: 2rem;
+  margin-top: 2rem;
 }
 </style>

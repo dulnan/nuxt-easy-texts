@@ -21,7 +21,7 @@ type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] }
 
 type RequiredModuleOptions = WithRequired<
   ModuleOptions,
-  'globalTexts' | 'generators' | 'pattern'
+  'globalTexts' | 'generators' | 'pattern' | 'experimental'
 >
 
 const defaultOptions: RequiredModuleOptions = {
@@ -35,6 +35,10 @@ const defaultOptions: RequiredModuleOptions = {
   generators: [],
 
   globalTexts: {},
+  experimental: {
+    advancedDebug: false,
+    languageOverride: false,
+  },
 }
 
 type ModuleHelperResolvers = {
@@ -104,6 +108,14 @@ export class ModuleHelper {
       pattern: options.pattern || defaultOptions.pattern,
       generators: options.generators || defaultOptions.generators,
       globalTexts: options.globalTexts || defaultOptions.globalTexts,
+      experimental: {
+        advancedDebug:
+          options.experimental?.advancedDebug ||
+          defaultOptions.experimental.advancedDebug,
+        languageOverride:
+          options.experimental?.languageOverride ||
+          defaultOptions.experimental.languageOverride,
+      },
     }
 
     // Gather all aliases for each layer.
@@ -322,7 +334,7 @@ export class ModuleHelper {
   addComponent(name: string) {
     addComponent({
       filePath: this.resolvers.module.resolve(
-        `./runtime/components/${name}.vue`,
+        `./runtime/components/${name}/index.vue`,
       ),
       name,
       global: true,

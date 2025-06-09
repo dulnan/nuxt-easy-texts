@@ -2,8 +2,15 @@
   <div>
     <h1>{{ $texts('homepageTitle', 'Welcome to our homepage!') }}</h1>
 
-
-    <section>
+    <section :aria-label="$texts('wrappedAria', 'This is a section')">
+      {{ $texts('wrappedAriaContent', 'This is some content in the wrapper') }}
+      <div>
+        <input
+          type="text"
+          :placeholder="$texts('inputPlaceholder', 'Input Placeholder')"
+        />
+        <input type="submit" :value="$texts('inputSubmitValue', 'Submit')" />
+      </div>
       <button @click="count--">
         {{ $texts('buttonDecrement', 'Remove 1') }}
       </button>
@@ -41,6 +48,10 @@
         </div>
       </div>
     </section>
+    <div style="height: 150vh" />
+    <div style="margin: 2rem 0">
+      <div>{{ $texts('footerCopyright', 'Copyright 2025') }}</div>
+    </div>
   </div>
 </template>
 

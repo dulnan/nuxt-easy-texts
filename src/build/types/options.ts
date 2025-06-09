@@ -31,4 +31,35 @@ export interface ModuleOptions {
    * Enables debug logging during dev.
    */
   debug?: boolean
+
+  /**
+   * Experimental features.
+   */
+  experimental?: {
+    /**
+     * Enables advanced debugging.
+     *
+     * If enabled, you need to render the <EasyTextsDebugOverlay> component
+     * when in debug mode. It will render an overlay that highlights rendered
+     * text keys in the DOM. Each key can be clicked to select or unselect it.
+     * The overlay can be submitted, which emits an "edit" event containing
+     * all selected keys as payload.
+     */
+    advancedDebug?: boolean
+
+    /**
+     * Enables the "partial language override" feature.
+     *
+     * If enabled, you can use the <EasyTextsLanguageOverride> component to
+     * override the language of parts of the page. It takes a prop called
+     * "language" and enforces a specific language for the entire component
+     * tree.
+     *
+     * Note that this *only* works when using the $texts and $textsPlural
+     * methods returned by useEasyTexts()! The methods usually available
+     * in Vue templates are injected *globally* and will therefore always
+     * display texts in the current language.
+     */
+    languageOverride?: boolean
+  }
 }

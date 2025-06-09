@@ -1,6 +1,7 @@
 <template>
-  <div style="padding-top: 100px; padding-left: 40px">
-    <EasyTextsDebugOverlay v-if="isDebug" />
+  <div>
+    <EasyTextsDebugOverlay v-if="isDebug" @edit="console.log($event.keys)" />
+
     <nav>
       <div>{{ siteName }}</div>
       <div>
@@ -10,9 +11,7 @@
         <div>{{ $texts('debugHmr', 'Foobar') }}</div>
       </div>
       <div>
-        <button @click="toggleDebug">
-          {{ $texts('toggleDebugMode', 'Toggle debug mode') }}
-        </button>
+        <button @click="toggleDebug">Toggle Debug Mode</button>
       </div>
       <ul>
         <li>
