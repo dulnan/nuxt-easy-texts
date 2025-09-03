@@ -26,6 +26,7 @@ const props = defineProps<{
   element: HTMLElement
   index: number
   selected: boolean
+  viewportSize: { width: number; height: number }
 }>()
 
 const rect = props.element.getBoundingClientRect()

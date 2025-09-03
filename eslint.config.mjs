@@ -11,8 +11,12 @@ export default withNuxt({
     ...eslintConfigPrettier.rules,
     ...eslintPluginPrettierRecommended.rules,
   },
-}).override('nuxt/typescript/rules', {
-  rules: {
-    '@typescript-eslint/ban-ts-comment': 'off',
-  },
 })
+  .override('nuxt/typescript/rules', {
+    rules: {
+      '@typescript-eslint/ban-ts-comment': 'off',
+    },
+  })
+  .overrideRules({
+    'vue/multi-word-component-names': 'off',
+  })

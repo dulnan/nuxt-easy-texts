@@ -15,9 +15,11 @@
             :element="match.element"
             :index
             :selected="selectedIndices.includes(index)"
+            :viewport-size
           />
         </div>
       </div>
+
       <form class="nuxt-easy-texts-selection" @submit.prevent="onSubmit">
         <div class="nuxt-easy-texts-selection-inner">
           <button
@@ -41,7 +43,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed, useEasyTexts } from '#imports'
+import {
+  onMounted,
+  ref,
+  computed,
+  useEasyTexts,
+  onBeforeUnmount,
+} from '#imports'
 import { DEBUG_END, DEBUG_START } from '../../helpers/debug'
 import Match from './Match.vue'
 
@@ -109,6 +117,11 @@ const { disableDebug } = useEasyTexts()
 const matches = ref<DebugMatch[]>([])
 const selectedIndices = ref<number[]>([])
 
+const viewportSize = ref({
+  width: window.innerWidth,
+  height: window.innerHeight,
+})
+
 const selected = computed(() => {
   return matches.value.filter((_, index) =>
     selectedIndices.value.includes(index),
@@ -126,7 +139,8 @@ function onSubmit() {
     .flatMap((v) => v.keys)
     .filter(onlyUnique)
     .sort()
-  console.log(keys)
+
+  emit('edit', keys)
 }
 
 function findNodes(): DebugMatch[] {
@@ -149,7 +163,6 @@ function handleNode(
   searchType: 'text' | 'attributes',
 ) {
   if (!(node instanceof HTMLElement)) {
-    console.log(node)
     return
   }
   const keys: string[] =
@@ -203,7 +216,7 @@ function extractKeysFromAttributes(element: HTMLElement): string[] {
 
   for (let i = 0; i < element.attributes.length; i++) {
     const attr = element.attributes[i]
-    if (attr.value.includes(DEBUG_START)) {
+    if (attr?.value && attr.value.includes(DEBUG_START)) {
       const attrKeys = extractKeys(attr.value)
       keys.push(...attrKeys)
     }
@@ -256,8 +269,30 @@ function onClick(event: MouseEvent) {
   }
 }
 
+let timeout: null | number = null
+
+function onResize() {
+  if (timeout) {
+    window.clearTimeout(timeout)
+  }
+  timeout = window.setTimeout(() => {
+    viewportSize.value = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    }
+  }, 500)
+}
+
 onMounted(() => {
+  window.addEventListener('resize', onResize)
   matches.value = findNodes()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onResize)
+  if (timeout) {
+    window.clearTimeout(timeout)
+  }
 })
 </script>
 
@@ -280,8 +315,5 @@ onMounted(() => {
   padding: 1rem;
   background: white;
   z-index: calc(var(--z-index) + 100);
-}
-
-.nuxt-easy-texts-selection button {
 }
 </style>

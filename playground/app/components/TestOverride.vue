@@ -32,7 +32,6 @@ const languageLabel = computed(() =>
 )
 
 const keys: EasyTextSingleKey[] = [
-  'toggleDebugMode',
   'buttonDecrement',
   'buttonIncrement',
   'textWithQuotes',

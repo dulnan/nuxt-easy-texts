@@ -1,6 +1,6 @@
 <template>
   <div>
-    <EasyTextsDebugOverlay v-if="isDebug" @edit="console.log($event.keys)" />
+    <EasyTextsDebugOverlay v-if="isDebug" @edit="onEdit" />
 
     <nav>
       <div>{{ siteName }}</div>
@@ -38,4 +38,8 @@ import { useEasyTexts, useSiteContext } from '#imports'
 const { toggleDebug, $texts, isDebug } = useEasyTexts()
 
 const { siteName } = useSiteContext()
+
+function onEdit(keys: string[]) {
+  console.log({ keys })
+}
 </script>

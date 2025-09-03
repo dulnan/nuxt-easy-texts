@@ -21,7 +21,7 @@ export default defineNuxtModule<ModuleOptions>({
     configKey: 'easyTexts',
     version,
     compatibility: {
-      nuxt: '^3.16.0',
+      nuxt: '>=3.16.0',
     },
   },
   async setup(options, nuxt) {
