@@ -23,6 +23,7 @@ export default function extractTexts(nuxt: Nuxt) {
   return createUnplugin(() => {
     return {
       name: 'nuxt-easy-texts:transform-file',
+      enforce: 'pre',
 
       transform(source, id) {
         const filePath = id.split('?')[0]
