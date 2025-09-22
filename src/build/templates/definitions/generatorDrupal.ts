@@ -42,6 +42,7 @@ export default function (path: string): CollectorTemplate {
 
           return `${fieldName}: ${graphqlFieldName}(${argsString})${typeProperties}`
         })
+        .sort((a, b) => a.localeCompare(b))
         .join('\n  ')
 
       // Build the GraphQL query.
