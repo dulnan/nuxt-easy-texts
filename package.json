@@ -39,6 +39,7 @@
     "lint:fix": "eslint ./src --fix",
     "test": "vitest run",
     "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
     "prettier": "prettier --check .",
     "prettier:fix": "prettier --write ."
   },
@@ -64,6 +65,7 @@
     "@nuxt/test-utils": "^3.21.0",
     "@types/micromatch": "^4.0.9",
     "@types/node": "^24.3.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "@vue/test-utils": "^2.4.6",
     "eslint": "^9.34.0",
     "eslint-config-prettier": "^10.1.8",

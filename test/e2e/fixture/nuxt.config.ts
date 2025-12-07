@@ -9,6 +9,9 @@ export default defineNuxtConfig({
         generate: 'json',
       },
     ],
+    experimental: {
+      languageOverride: true,
+    },
   },
 
   // Disable sourcemaps for tests to avoid conflicts with transform plugin

@@ -3,6 +3,10 @@ import { defineVitestProject } from '@nuxt/test-utils/config'
 
 export default defineConfig({
   test: {
+    coverage: {
+      include: ['src/**'],
+      exclude: ['src/runtime/components/**'],
+    },
     projects: [
       {
         test: {
