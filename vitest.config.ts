@@ -9,6 +9,11 @@ export default defineConfig({
           name: 'unit',
           include: ['test/{e2e,unit}/*.{test,spec}.ts'],
           environment: 'node',
+          server: {
+            deps: {
+              inline: [/jiti/, /@nuxt\/test-utils/],
+            },
+          },
         },
       },
       await defineVitestProject({
