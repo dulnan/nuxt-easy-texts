@@ -1,5 +1,6 @@
 import { computed, defineNuxtPlugin, useState, watch } from '#imports'
 import { easyTextsLoader } from '#nuxt-easy-texts/loader'
+import { DEBUG_ENABLED } from '../helpers/constants'
 import { getPluralTexts, getSingleText } from '../helpers/textsFunctions'
 import type { Replacements, TextsState } from '../types'
 
@@ -16,10 +17,7 @@ export default defineNuxtPlugin<Record<string, unknown>>({
           ? loader.reloadTrigger()
           : computed(() => 'und')
 
-    const isDebug = useState<boolean>(
-      'nuxt_easy_texts_debug_enabled',
-      () => false,
-    )
+    const isDebug = useState<boolean>(DEBUG_ENABLED, () => false)
 
     const translations = useState<Record<string, TextsState>>(
       'nuxt_easy_texts',

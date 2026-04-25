@@ -4,10 +4,10 @@ import {
   useState,
   inject,
   type ComputedRef,
-  type Ref,
 } from '#imports'
+import { DEBUG_ENABLED, INJECT_OVERRIDE } from '../helpers/constants'
 import { getPluralTexts, getSingleText } from '../helpers/textsFunctions'
-import type { EasyTextsFunctions, Replacements, TextsState } from './../types'
+import type { EasyTextsFunctions, Replacements } from './../types'
 
 interface UseEasyTexts extends EasyTextsFunctions {
   /**
@@ -36,15 +36,9 @@ interface UseEasyTexts extends EasyTextsFunctions {
  */
 export function useEasyTexts(): UseEasyTexts {
   // Provided by <EasyTextsLanguageOverride>.
-  const override = inject<Ref<TextsState | null> | null>(
-    'nuxt_easy_texts_override',
-    null,
-  )
+  const override = inject(INJECT_OVERRIDE, null)
 
-  const isDebugState = useState<boolean>(
-    'nuxt_easy_texts_debug_enabled',
-    () => false,
-  )
+  const isDebugState = useState<boolean>(DEBUG_ENABLED, () => false)
 
   const isDebug = computed<boolean>(() => isDebugState.value)
 

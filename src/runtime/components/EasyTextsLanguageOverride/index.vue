@@ -6,6 +6,7 @@
 
 <script lang="ts" setup>
 import { provide, computed, useNuxtApp, ref, watch } from '#imports'
+import { INJECT_OVERRIDE } from '../../helpers/constants'
 
 const props = withDefaults(
   defineProps<{
@@ -46,5 +47,5 @@ const langAttribute = computed(() => {
   return undefined
 })
 
-provide('nuxt_easy_texts_override', translations)
+provide(INJECT_OVERRIDE, translations)
 </script>
