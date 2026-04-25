@@ -304,4 +304,179 @@ describe('textsFunctions', () => {
       })
     })
   })
+
+  describe('dev-mode default fallback', () => {
+    // In dev mode the runtime forwards the call's default text(s) so the UI
+    // can render something sensible while a freshly-added (post-HMR) key
+    // hasn't been picked up by the loader yet. The helpers only fall back
+    // when the translation isn't found.
+
+    describe('getSingleText', () => {
+      it('uses defaultText when the key is not in texts', () => {
+        const texts: TextsState = { 'other.key': 'Other' }
+        expect(
+          getSingleText('missing.key', false, texts, undefined, 'My default'),
+        ).toBe('My default')
+      })
+
+      it('uses defaultText when texts is null', () => {
+        expect(
+          getSingleText('missing.key', false, null, undefined, 'My default'),
+        ).toBe('My default')
+      })
+
+      it('applies replacements to the defaultText fallback', () => {
+        const replacements: Replacements = { '@name': 'Alice' }
+        expect(
+          getSingleText(
+            'missing.key',
+            false,
+            null,
+            replacements,
+            'Hello @name!',
+          ),
+        ).toBe('Hello Alice!')
+      })
+
+      it('prefers the loaded translation over defaultText', () => {
+        const texts: TextsState = { 'my.key': 'Loaded text' }
+        expect(
+          getSingleText('my.key', false, texts, undefined, 'My default'),
+        ).toBe('Loaded text')
+      })
+
+      it('returns the key in debug mode even when defaultText is provided', () => {
+        expect(
+          getSingleText('missing.key', true, null, undefined, 'My default'),
+        ).toBe('missing.key')
+      })
+
+      it('returns the key when defaultText is undefined and key is missing', () => {
+        // Production path: vite plugin strips the default, runtime passes
+        // undefined here, so we still return the key.
+        expect(getSingleText('missing.key', false, null)).toBe('missing.key')
+      })
+    })
+
+    describe('getPluralTexts', () => {
+      it('uses singular fallback for count 1 when key is missing', () => {
+        expect(
+          getPluralTexts(
+            'missing',
+            1,
+            false,
+            null,
+            undefined,
+            'One item',
+            '@count items',
+          ),
+        ).toBe('One item')
+      })
+
+      it('uses plural fallback with @count substitution when key is missing', () => {
+        expect(
+          getPluralTexts(
+            'missing',
+            5,
+            false,
+            null,
+            undefined,
+            'One item',
+            '@count items',
+          ),
+        ).toBe('5 items')
+      })
+
+      it('uses plural fallback for count 0', () => {
+        expect(
+          getPluralTexts(
+            'missing',
+            0,
+            false,
+            null,
+            undefined,
+            'One item',
+            '@count items',
+          ),
+        ).toBe('0 items')
+      })
+
+      it('applies replacements to the fallback text', () => {
+        const replacements: Replacements = { '@name': 'Alice' }
+        expect(
+          getPluralTexts(
+            'missing',
+            5,
+            false,
+            null,
+            replacements,
+            '@name has one item',
+            '@name has @count items',
+          ),
+        ).toBe('Alice has 5 items')
+      })
+
+      it('prefers the loaded translation over fallbacks', () => {
+        const texts: TextsState = {
+          items: ['Loaded singular', 'Loaded @count'],
+        }
+        expect(
+          getPluralTexts(
+            'items',
+            5,
+            false,
+            texts,
+            undefined,
+            'Default one',
+            'Default @count',
+          ),
+        ).toBe('Loaded 5')
+      })
+
+      it('does not fall back when only one of singular/plural is provided', () => {
+        // Defensive: incomplete fallback args are ignored, returning the key.
+        expect(
+          getPluralTexts(
+            'missing',
+            5,
+            false,
+            null,
+            undefined,
+            'One item',
+            undefined,
+          ),
+        ).toBe('missing')
+        expect(
+          getPluralTexts(
+            'missing',
+            5,
+            false,
+            null,
+            undefined,
+            undefined,
+            '@count items',
+          ),
+        ).toBe('missing')
+      })
+
+      it('returns the key in debug mode even when fallbacks are provided', () => {
+        expect(
+          getPluralTexts(
+            'missing',
+            5,
+            true,
+            null,
+            undefined,
+            'One item',
+            '@count items',
+          ),
+        ).toBe('missing')
+      })
+
+      it('returns the key when no fallbacks are provided and key is missing', () => {
+        // Production path mirror.
+        expect(getPluralTexts('missing', 5, false, null)).toBe('missing')
+      })
+    })
+  })
 })

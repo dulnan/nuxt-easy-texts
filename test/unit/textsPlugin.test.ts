@@ -2,16 +2,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref, computed } from 'vue'
 import textsPlugin from '../../src/runtime/plugins/texts'
 
-// Type for the plugin's setup return value
+// Type for the plugin's setup return value. The plugin branches on
+// import.meta.dev and exports two different signatures. The vitest
+// config sets import.meta.dev = true so the dev-mode (untransformed)
+// signature is what these tests exercise.
 type PluginSetupResult = {
   provide: {
     texts: (
       key: string,
+      defaultText?: string,
       replacements?: Record<string, string | number>,
     ) => string
     textsPlural: (
       key: string,
       count: number | null | undefined,
+      singular?: string,
+      plural?: string,
       replacements?: Record<string, string | number>,
     ) => string
     nuxtEasyTexts: {
@@ -165,7 +171,9 @@ describe('texts plugin', () => {
       const result = await callSetup()
       const $texts = result.provide.texts
 
-      const text = $texts('greeting', { '@name': 'World' })
+      // Dev-mode signature: (key, defaultText?, replacements?). The default
+      // is irrelevant here because the loader has 'greeting' loaded.
+      const text = $texts('greeting', undefined, { '@name': 'World' })
 
       expect(text).toBe('Hello World!')
     })

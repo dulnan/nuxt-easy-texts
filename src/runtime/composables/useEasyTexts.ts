@@ -51,26 +51,62 @@ export function useEasyTexts(): UseEasyTexts {
   const app = useNuxtApp()
 
   // If an override is set, return a method that uses the overrides instead.
+  // See the plugin in src/runtime/plugins/texts.ts for the rationale behind
+  // the import.meta.dev branching: the vite plugin only transforms calls in
+  // production, so dev-mode calls retain their default-text args (which we
+  // also forward as a fallback for unloaded translations).
   const textsFunction = override
-    ? function (key: string, replacements?: Replacements) {
-        return getSingleText(key, isDebug.value, override.value, replacements)
-      }
+    ? import.meta.dev
+      ? function (
+          key: string,
+          defaultText?: string,
+          replacements?: Replacements,
+        ) {
+          return getSingleText(
+            key,
+            isDebug.value,
+            override.value,
+            replacements,
+            defaultText,
+          )
+        }
+      : function (key: string, replacements?: Replacements) {
+          return getSingleText(key, isDebug.value, override.value, replacements)
+        }
     : app.$texts
 
   const textsPluralFunction = override
-    ? function (
-        key: string,
-        count: string | number | undefined | null,
-        replacements?: Replacements,
-      ) {
-        return getPluralTexts(
-          key,
-          count,
-          isDebug.value,
-          override.value,
-          replacements,
-        )
-      }
+    ? import.meta.dev
+      ? function (
+          key: string,
+          count: string | number | undefined | null,
+          singular?: string,
+          plural?: string,
+          replacements?: Replacements,
+        ) {
+          return getPluralTexts(
+            key,
+            count,
+            isDebug.value,
+            override.value,
+            replacements,
+            singular,
+            plural,
+          )
+        }
+      : function (
+          key: string,
+          count: string | number | undefined | null,
+          replacements?: Replacements,
+        ) {
+          return getPluralTexts(
+            key,
+            count,
+            isDebug.value,
+            override.value,
+            replacements,
+          )
+        }
     : app.$textsPlural
 
   function enableDebug(): void {

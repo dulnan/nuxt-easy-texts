@@ -154,10 +154,15 @@ describe('useEasyTexts', () => {
       })
 
       const { $texts } = useEasyTexts()
-      // When override is active, second arg is replacements
+      // Dev-mode signature: (key, defaultText?, replacements?). The override
+      // is loaded so defaultText is irrelevant here.
       const result = (
-        $texts as (key: string, replacements?: Record<string, string>) => string
-      )('greeting.key', { '@name': 'Welt' })
+        $texts as (
+          key: string,
+          defaultText?: string,
+          replacements?: Record<string, string>,
+        ) => string
+      )('greeting.key', undefined, { '@name': 'Welt' })
 
       expect(result).toBe('Hallo Welt!')
     })
@@ -214,10 +219,17 @@ describe('useEasyTexts', () => {
       })
 
       const { $textsPlural } = useEasyTexts()
-      // When override is active, third arg is replacements
-      const result = ($textsPlural as OverridePluralFn)('cart.key', 3, {
-        '@user': 'Max',
-      })
+      // Dev-mode signature: (key, count, singular?, plural?, replacements?).
+      // The override is loaded so singular/plural fallbacks are irrelevant.
+      const result = (
+        $textsPlural as (
+          key: string,
+          count: number | string | null | undefined,
+          singular?: string,
+          plural?: string,
+          replacements?: Record<string, string | number>,
+        ) => string
+      )('cart.key', 3, undefined, undefined, { '@user': 'Max' })
 
       expect(result).toBe('Max hat 3 Produkte')
     })

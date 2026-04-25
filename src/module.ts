@@ -64,7 +64,12 @@ export default defineNuxtModule<ModuleOptions>({
       helper.addComponent('EasyTextsDebugOverlay')
     }
 
-    addBuildPlugin(textsVitePlugin(nuxt))
+    addBuildPlugin(textsVitePlugin(nuxt), {
+      dev: false,
+      build: true,
+      server: true,
+      client: true,
+    })
 
     helper.applyBuildConfig()
 

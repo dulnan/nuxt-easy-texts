@@ -62,32 +62,69 @@ export default defineNuxtPlugin<Record<string, unknown>>({
     const currentTranslations = computed<TextsState>(() => {
       return translations.value[currentLanguage.value] || {}
     })
-    // The method signature does not match the one of $texts because the
-    // vite plugin removes the default text from the arguments.
-    const $texts = (key: string, replacements?: Replacements): string => {
-      return getSingleText(
-        key,
-        isDebug.value,
-        currentTranslations.value,
-        replacements,
-      )
-    }
+    // The vite plugin runs only on production builds, so the runtime receives
+    // two different call shapes:
+    //   - dev:  (key, defaultText?, replacements?) — args preserved as-is
+    //   - prod: (key, replacements?)               — defaults stripped
+    // We branch on import.meta.dev so each shape is handled cleanly. In the
+    // dev branch we also forward the default text to the helper as a fallback,
+    // which renders the default while a freshly-added (post-HMR) key hasn't
+    // been picked up by the loader yet. The unused branch is tree-shaken in
+    // production.
+    const $texts = import.meta.dev
+      ? (
+          key: string,
+          defaultText?: string,
+          replacements?: Replacements,
+        ): string => {
+          return getSingleText(
+            key,
+            isDebug.value,
+            currentTranslations.value,
+            replacements,
+            defaultText,
+          )
+        }
+      : (key: string, replacements?: Replacements): string => {
+          return getSingleText(
+            key,
+            isDebug.value,
+            currentTranslations.value,
+            replacements,
+          )
+        }
 
-    // The method signature does not match the one of $texts because the
-    // vite plugin removes the default text from the arguments.
-    const textsPlural = (
-      key: string,
-      count: number | null | undefined,
-      replacements?: Replacements,
-    ): string => {
-      return getPluralTexts(
-        key,
-        count,
-        isDebug.value,
-        currentTranslations.value,
-        replacements,
-      )
-    }
+    const textsPlural = import.meta.dev
+      ? (
+          key: string,
+          count: number | null | undefined,
+          singular?: string,
+          plural?: string,
+          replacements?: Replacements,
+        ): string => {
+          return getPluralTexts(
+            key,
+            count,
+            isDebug.value,
+            currentTranslations.value,
+            replacements,
+            singular,
+            plural,
+          )
+        }
+      : (
+          key: string,
+          count: number | null | undefined,
+          replacements?: Replacements,
+        ): string => {
+          return getPluralTexts(
+            key,
+            count,
+            isDebug.value,
+            currentTranslations.value,
+            replacements,
+          )
+        }
 
     return {
       provide: {
