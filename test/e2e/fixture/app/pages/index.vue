@@ -110,10 +110,26 @@
     <p data-testid="replacement-duplicate-2">
       {{ $texts('greeting.key', 'Hello @name!', { '@name': userName }) }}
     </p>
+
+    <!--
+      Tests 13-15: $texts/$textsPlural inside <script setup> WITH replacements.
+      Regression test for the double-transform bug: the vite plugin's
+      transform hook runs both on the parent .vue file and on its
+      ?vue&type=script sub-module. Without the idempotence guard, the
+      second pass strips the replacements arg.
+    -->
+    <p data-testid="script-replacement-single">{{ scriptGreeting }}</p>
+    <p data-testid="script-replacement-plural-singular">
+      {{ scriptItemsSingular }}
+    </p>
+    <p data-testid="script-replacement-plural-many">
+      {{ scriptItemsMany }}
+    </p>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useEasyTexts } from '#imports'
 
 const { $texts, $textsPlural } = useEasyTexts()
@@ -121,4 +137,34 @@ const { $texts, $textsPlural } = useEasyTexts()
 // Test data
 const userName = 'Alice'
 const placeName = 'Wonderland'
+
+// Calls inside <script setup> with replacements — these end up in the
+// ?vue&type=script sub-module and trigger the double-transform path.
+const scriptGreeting = computed(() =>
+  $texts('greeting.key', 'Hello @name!', { '@name': userName }),
+)
+
+const scriptItemsSingular = computed(() =>
+  $textsPlural(
+    'items.user',
+    1,
+    '@name has one item',
+    '@name has @count items',
+    {
+      '@name': userName,
+    },
+  ),
+)
+
+const scriptItemsMany = computed(() =>
+  $textsPlural(
+    'items.user',
+    5,
+    '@name has one item',
+    '@name has @count items',
+    {
+      '@name': userName,
+    },
+  ),
+)
 </script>

@@ -103,4 +103,39 @@ describe('vite plugin transform e2e', async () => {
     // Should NOT contain the default text pattern
     expect(html).not.toContain('>Hello @name!<')
   })
+
+  // Regression tests for the double-transform bug: replacements declared in
+  // <script setup> (which end up in the ?vue&type=script sub-module) must
+  // survive the second transform pass. Other tests on this page also use the
+  // same translation keys via templates, so we scope each assertion to the
+  // specific <p data-testid="..."> element rather than searching the whole
+  // document.
+
+  const extractByTestId = (html: string, testId: string): string => {
+    const match = html.match(
+      new RegExp(`data-testid="${testId}"[^>]*>([^<]*)<`),
+    )
+    return match?.[1]?.trim() ?? ''
+  }
+
+  it('preserves replacements for $texts called from <script setup>', async () => {
+    const html = await $fetch<string>('/')
+    expect(extractByTestId(html, 'script-replacement-single')).toBe(
+      '[LOADED] Hello Alice!',
+    )
+  })
+
+  it('preserves replacements for $textsPlural (singular) from <script setup>', async () => {
+    const html = await $fetch<string>('/')
+    expect(extractByTestId(html, 'script-replacement-plural-singular')).toBe(
+      '[LOADED] Alice has one item',
+    )
+  })
+
+  it('preserves replacements for $textsPlural (plural) from <script setup>', async () => {
+    const html = await $fetch<string>('/')
+    expect(extractByTestId(html, 'script-replacement-plural-many')).toBe(
+      '[LOADED] Alice has 5 items',
+    )
+  })
 })

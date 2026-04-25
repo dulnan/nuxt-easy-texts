@@ -67,6 +67,43 @@ const b = $texts('key2', 'Text 2')`
     })
   })
 
+  describe('idempotence (regression tests for double-transform bug)', () => {
+    // The transform may run more than once on the same source (once on the
+    // parent .vue file, again on its ?vue&type=script sub-module). Without
+    // an idempotence guard, the second pass would treat the replacements
+    // object as the default text and strip it.
+
+    it('should be a no-op for an already-transformed $texts call with replacements', () => {
+      const source = `$texts('myKey', { '@name': name })`
+      const result = transform(source)
+      expect(result).toContain(`$texts('myKey'`)
+      expect(result).toContain(`'@name': name`)
+    })
+
+    it('should be a no-op for an already-transformed $textsPlural call with replacements', () => {
+      const source = `$textsPlural('items', count, { '@name': name })`
+      const result = transform(source)
+      expect(result).toContain(`$textsPlural('items', count`)
+      expect(result).toContain(`'@name': name`)
+    })
+
+    it('should produce the same result when run twice on $texts with replacements', () => {
+      const source = `$texts('myKey', 'Hello @name', { '@name': name })`
+      const once = transform(source)
+      const twice = transform(once)
+      expect(twice).toBe(once)
+      expect(twice).toContain(`'@name': name`)
+    })
+
+    it('should produce the same result when run twice on $textsPlural with replacements', () => {
+      const source = `$textsPlural('items', count, 'One @item', '@count @items', { '@item': item })`
+      const once = transform(source)
+      const twice = transform(once)
+      expect(twice).toBe(once)
+      expect(twice).toContain(`'@item': item`)
+    })
+  })
+
   describe('duplicate calls (regression tests for s.replace bug)', () => {
     // These tests verify the fix for the bug where duplicate identical
     // $texts/$textsPlural calls were not all transformed correctly.

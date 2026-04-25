@@ -34,8 +34,15 @@ export function transformTexts(
     const tree = parse(call.code)
     const node = getExpression(tree)
     if (node) {
-      // Only keep the first argument (the key) and the third (replacements).
+      // The transform may run more than once on the same source (e.g. once on
+      // a parent .vue file and again on its ?vue&type=script sub-module).
+      // Skip calls that have already been transformed: the default text is a
+      // string literal in 2nd position, so anything else means we're done.
       const args = node.arguments
+      if (args[1] && args[1].type !== 'Literal') {
+        return
+      }
+      // Only keep the first argument (the key) and the third (replacements).
       node.arguments = [args[0]!]
       const replacements = args[2]
       if (replacements) {
@@ -50,10 +57,15 @@ export function transformTexts(
     const tree = parse(call.code)
     const node = getExpression(tree)
     if (node) {
+      // See note above: skip already-transformed calls. The singular default
+      // is a string literal in 3rd position; anything else means we're done.
+      const args = node.arguments
+      if (args[2] && args[2].type !== 'Literal') {
+        return
+      }
       // Only keep the first two arguments and the fifth (replacements).
       // e.g. $textsPlural('context.key', count, '1 year', '@count years', { '@name': name })
       // =>   $textsPlural('context.key', count, { '@name': name })
-      const args = node.arguments
       node.arguments = args.slice(0, 2)
       const replacements = args[4]
       if (replacements) {
