@@ -125,6 +125,10 @@
     <p data-testid="script-replacement-plural-many">
       {{ scriptItemsMany }}
     </p>
+
+    <!-- Tests 16-17: backtick default texts with replacements. -->
+    <p data-testid="backtick-replacement">{{ backtickGreeting }}</p>
+    <p data-testid="backtick-plural">{{ backtickItems }}</p>
   </div>
 </template>
 
@@ -162,6 +166,34 @@ const scriptItemsMany = computed(() =>
     5,
     '@name has one item',
     '@name has @count items',
+    {
+      '@name': userName,
+    },
+  ),
+)
+
+// Backtick (template literal) default texts with replacements. The collector
+// accepts template literals as default texts, so the vite plugin has to strip
+// them too. When it doesn't, the call ships untransformed and the production
+// runtime - whose signature takes the replacements as the second argument -
+// reads the default text as the replacements and silently drops the real ones.
+//
+// These use their own keys so a failure here can't be masked by another test's
+// translation.
+//
+// NOTE: never write a literal call expression in a comment anywhere in this
+// fixture. The collector scans the raw file text, so it gets picked up as a
+// real call and fails validation on its non-literal arguments.
+const backtickGreeting = computed(() =>
+  $texts('backtick.key', `Hi @name!`, { '@name': userName }),
+)
+
+const backtickItems = computed(() =>
+  $textsPlural(
+    'backtick.plural',
+    4,
+    `@name has one thing`,
+    `@name has @count things`,
     {
       '@name': userName,
     },

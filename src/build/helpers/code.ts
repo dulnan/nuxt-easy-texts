@@ -24,34 +24,52 @@ export function extractMethodCalls(code: string, method: string): MethodCall[] {
     let endIndex = startIndex + methodLength
     let openBrackets = 1
 
-    // Keep track of the quotes.
-    let inSingleQuote = false
-    let inDoubleQuote = false
-    let inTemplateLiteral = false
+    // Stack of the nested contexts we are currently inside. Entries are:
+    //   "'" / '"'  a quoted string
+    //   '`'        a template literal
+    //   '{'        a brace scope - an object literal, or the inside of a
+    //              template literal interpolation
+    // A stack rather than a set of flags, because these nest arbitrarily: an
+    // interpolation holds code, that code can hold another template literal,
+    // and so on. Parentheses are only counted while not inside a string, so a
+    // ")" in a text never ends the call early.
+    const stack: string[] = []
 
     while (endIndex < code.length && openBrackets > 0) {
       const char = code[endIndex]
-      const prevChar = code[endIndex - 1]
+      const context = stack[stack.length - 1]
 
-      if (char === "'" && !inDoubleQuote && !inTemplateLiteral) {
-        inSingleQuote = !inSingleQuote
-      } else if (char === '"' && !inSingleQuote && !inTemplateLiteral) {
-        inDoubleQuote = !inDoubleQuote
-      } else if (char === '`' && !inSingleQuote && !inDoubleQuote) {
-        inTemplateLiteral = !inTemplateLiteral
-      }
-
-      if (!inSingleQuote && !inDoubleQuote && !inTemplateLiteral) {
-        if (char === '(') {
-          openBrackets++
-        } else if (char === ')') {
-          openBrackets--
+      if (context === "'" || context === '"' || context === '`') {
+        // Inside a string a backslash escapes the next character, so consume
+        // both. Without this, 'It\'s here' reads the escaped quote as the end
+        // of the string and the scan runs on past the end of the call.
+        if (char === '\\') {
+          endIndex += 2
+          continue
         }
-      } else if (inTemplateLiteral && char === '$' && prevChar === '{') {
-        // Handle nested expressions within template literals.
+        if (char === context) {
+          stack.pop()
+        } else if (
+          context === '`' &&
+          char === '$' &&
+          code[endIndex + 1] === '{'
+        ) {
+          // Opening an interpolation: its contents are code, not text.
+          stack.push('{')
+          endIndex += 2
+          continue
+        }
+      } else if (char === "'" || char === '"' || char === '`') {
+        stack.push(char)
+      } else if (char === '{') {
+        stack.push('{')
+      } else if (char === '}') {
+        // Closes an object literal or an interpolation, returning us to
+        // whatever context enclosed it.
+        stack.pop()
+      } else if (char === '(') {
         openBrackets++
-      } else if (inTemplateLiteral && char === '}' && prevChar === '}') {
-        // Handle closing of nested expressions within template literals.
+      } else if (char === ')') {
         openBrackets--
       }
 

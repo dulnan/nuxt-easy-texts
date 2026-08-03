@@ -23,6 +23,12 @@ const textsData: Record<string, TextsData> = {
       '[LOADED] @user: one product (@price)',
       '[LOADED] @user: @count products (@price)',
     ],
+    // Backtick (template literal) default texts
+    'backtick.key': '[LOADED] Hi @name!',
+    'backtick.plural': [
+      '[LOADED] @name has one thing',
+      '[LOADED] @name has @count things',
+    ],
     // Debug mode test texts
     'debug.test': '[EN] Debug test text',
     'override.test': '[EN] Override test text',

@@ -17,6 +17,34 @@ function getExpression(node: Node): CallExpression | undefined {
   }
 }
 
+/**
+ * Whether the node occupies a default-text slot, i.e. whether the call still
+ * needs transforming.
+ *
+ * This must accept exactly what the collector accepts as a default text (see
+ * extractLiteral() in ../helpers/ast.ts): a string literal or a template
+ * literal. Anything else in that position - most importantly the replacements
+ * object, which shifts left once the defaults have been stripped - means the
+ * call is already transformed and must be left alone.
+ *
+ * Testing for "is a default text" rather than "is not a Literal" matters: the
+ * latter also rejects template literal defaults, which then never get stripped
+ * at all. Such a call reaches the runtime in its untransformed shape, where the
+ * production signature ($texts(key, replacements)) reads the default text as
+ * the replacements argument and drops the real replacements on the floor.
+ */
+function isDefaultText(
+  node: CallExpression['arguments'][number] | undefined,
+): boolean {
+  if (!node) {
+    return false
+  }
+  if (node.type === 'TemplateLiteral') {
+    return true
+  }
+  return node.type === 'Literal' && typeof node.value === 'string'
+}
+
 type ParseFn = (code: string) => Node
 
 /**
@@ -35,11 +63,10 @@ export function transformTexts(
     const node = getExpression(tree)
     if (node) {
       // The transform may run more than once on the same source (e.g. once on
-      // a parent .vue file and again on its ?vue&type=script sub-module).
-      // Skip calls that have already been transformed: the default text is a
-      // string literal in 2nd position, so anything else means we're done.
+      // a parent .vue file and again on its ?vue&type=script sub-module), so
+      // only transform while a default text is still present in 2nd position.
       const args = node.arguments
-      if (args[1] && args[1].type !== 'Literal') {
+      if (!isDefaultText(args[1])) {
         return
       }
       // Only keep the first argument (the key) and the third (replacements).
@@ -57,10 +84,10 @@ export function transformTexts(
     const tree = parse(call.code)
     const node = getExpression(tree)
     if (node) {
-      // See note above: skip already-transformed calls. The singular default
-      // is a string literal in 3rd position; anything else means we're done.
+      // See note above: the singular default sits in 3rd position, so only
+      // transform while one is still there.
       const args = node.arguments
-      if (args[2] && args[2].type !== 'Literal') {
+      if (!isDefaultText(args[2])) {
         return
       }
       // Only keep the first two arguments and the fifth (replacements).

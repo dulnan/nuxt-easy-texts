@@ -104,6 +104,75 @@ const b = $texts('key2', 'Text 2')`
     })
   })
 
+  describe('template literal defaults', () => {
+    // The collector accepts both string literals and template literals as a
+    // default text (extractLiteral() in src/build/helpers/ast.ts), so the vite
+    // plugin has to strip both. An earlier idempotence guard tested for
+    // "not a Literal", which silently skipped every backtick default: the call
+    // shipped untransformed and the production runtime - whose signature is
+    // $texts(key, replacements) - then read the default text as the
+    // replacements argument and discarded the real replacements.
+
+    it('should strip a template literal default from $texts', () => {
+      const source = "$texts('k', `Default text`)"
+      expect(transform(source)).toBe(`$texts('k')`)
+    })
+
+    it('should strip a template literal default but keep replacements', () => {
+      const source = "$texts('k', `Hello @name`, { '@name': name })"
+      const result = transform(source)
+      expect(result).toContain(`$texts('k'`)
+      expect(result).toContain(`'@name': name`)
+      expect(result).not.toContain('Hello @name')
+    })
+
+    it('should strip an interpolated template literal default', () => {
+      // Defensive only: the collector rejects interpolated defaults during
+      // validation (see extractLiteral), so a build never reaches the plugin
+      // with one. The plugin still handles it rather than leaving a
+      // half-transformed call behind.
+      const source = "$texts('k', `Hello ${fallback}`, { '@name': name })"
+      const result = transform(source)
+      expect(result).toContain(`'@name': name`)
+      expect(result).not.toContain('fallback')
+    })
+
+    it('should strip template literal singular in $textsPlural', () => {
+      const source =
+        "$textsPlural('k', count, `1 @thing`, '@count @things', { '@thing': t })"
+      const result = transform(source)
+      expect(result).toContain(`$textsPlural('k', count`)
+      expect(result).toContain(`'@thing': t`)
+      expect(result).not.toContain('1 @thing')
+      expect(result).not.toContain('@count @things')
+    })
+
+    it('should strip template literal plural in $textsPlural', () => {
+      const source =
+        "$textsPlural('k', count, '1 @thing', `@count @things`, { '@thing': t })"
+      const result = transform(source)
+      expect(result).toContain(`'@thing': t`)
+      expect(result).not.toContain('@count @things')
+    })
+
+    it('should stay idempotent for template literal defaults', () => {
+      const source = "$texts('k', `Hello @name`, { '@name': name })"
+      const once = transform(source)
+      const twice = transform(once)
+      expect(twice).toBe(once)
+      expect(twice).toContain(`'@name': name`)
+    })
+
+    it('should stay idempotent for template literal plural defaults', () => {
+      const source =
+        "$textsPlural('k', count, `1 @thing`, `@count @things`, { '@thing': t })"
+      const once = transform(source)
+      const twice = transform(once)
+      expect(twice).toBe(once)
+      expect(twice).toContain(`'@thing': t`)
+    })
+  })
+
   describe('duplicate calls (regression tests for s.replace bug)', () => {
     // These tests verify the fix for the bug where duplicate identical
     // $texts/$textsPlural calls were not all transformed correctly.

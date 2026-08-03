@@ -25,6 +25,18 @@ export function extractLiteral(
       return literal.value
     }
   } else if (literal && literal.type === 'TemplateLiteral') {
+    // Only the first quasi is ever read, so an interpolated template literal
+    // would silently extract as the text before the first placeholder. That
+    // truncated string becomes the extracted text and ends up in the generator
+    // output, so reject it instead of quietly losing half the sentence.
+    //
+    // This throws regardless of throwError: a wrong value is worse than a
+    // missing one, and the caller can't tell the two apart.
+    if (literal.expressions.length) {
+      throw new Error(
+        `Interpolated template literals can't be used for the "${argument}" argument, only the text before the first placeholder would be extracted. Use a static string and pass dynamic values via the replacements argument.`,
+      )
+    }
     return literal.quasis[0]?.value.raw
   }
   if (throwError) {

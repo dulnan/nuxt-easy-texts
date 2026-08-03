@@ -118,6 +118,35 @@ describe('vite plugin transform e2e', async () => {
     return match?.[1]?.trim() ?? ''
   }
 
+  // Assertions are scoped to the rendered element: the raw (unreplaced)
+  // translations also appear in the hydration payload, so a bare toContain
+  // would match there and pass regardless of the transform.
+
+  it('preserves replacements for a backtick default text', async () => {
+    const html = await $fetch<string>('/')
+    expect(html).toContain(
+      '<p data-testid="backtick-replacement">[LOADED] Hi Alice!</p>',
+    )
+    // Untransformed, the runtime reads the default text as the replacements
+    // argument, so @name would survive unreplaced.
+    expect(html).not.toContain(
+      '<p data-testid="backtick-replacement">[LOADED] Hi @name!</p>',
+    )
+    // The backtick default itself must not reach the build.
+    expect(html).not.toContain('>Hi @name!<')
+  })
+
+  it('preserves replacements for backtick defaults in $textsPlural', async () => {
+    const html = await $fetch<string>('/')
+    expect(html).toContain(
+      '<p data-testid="backtick-plural">[LOADED] Alice has 4 things</p>',
+    )
+    expect(html).not.toContain(
+      '<p data-testid="backtick-plural">[LOADED] @name has 4 things</p>',
+    )
+    expect(html).not.toContain('>@name has @count things<')
+  })
+
   it('preserves replacements for $texts called from <script setup>', async () => {
     const html = await $fetch<string>('/')
     expect(extractByTestId(html, 'script-replacement-single')).toBe(

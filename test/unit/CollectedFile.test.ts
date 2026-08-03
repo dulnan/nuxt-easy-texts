@@ -176,6 +176,60 @@ describe('CollectedFile', () => {
       expect(file.errors[0]!.filePath).toBe('/path/to/file.vue')
     })
 
+    it('rejects an interpolated template literal default text', () => {
+      // Only the first quasi is read, so this would otherwise extract as the
+      // truncated "Hello " and ship that as the text.
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        "$texts('greeting', `Hello ${name}`)",
+      )
+
+      expect(file.extractions).toHaveLength(0)
+      expect(file.errors).toHaveLength(1)
+      expect(file.errors[0]!.message).toContain('defaultText')
+      expect(file.errors[0]!.filePath).toBe('/path/to/file.vue')
+    })
+
+    it('rejects an interpolated template literal key', () => {
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        "$texts(`greeting.${suffix}`, 'Hello')",
+      )
+
+      expect(file.extractions).toHaveLength(0)
+      expect(file.errors).toHaveLength(1)
+      expect(file.errors[0]!.message).toContain('key')
+    })
+
+    it('rejects interpolated template literals in $textsPlural', () => {
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        "$textsPlural('items', count, `One ${thing}`, '@count things')",
+      )
+
+      expect(file.extractions).toHaveLength(0)
+      expect(file.errors).toHaveLength(1)
+      expect(file.errors[0]!.message).toContain('singular')
+    })
+
+    it('still accepts a non-interpolated template literal', () => {
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        "$texts('greeting', `Hello there`)",
+      )
+
+      expect(file.errors).toHaveLength(0)
+      expect(file.extractions).toHaveLength(1)
+      expect(file.extractions[0]).toMatchObject({
+        fullKey: 'greeting',
+        defaultText: 'Hello there',
+      })
+    })
+
     it('handleError captures error message', () => {
       const file = new CollectedFile(cache, '/path/to/file.vue', '')
       const call = { code: '$texts(invalid)', start: 0, end: 15 }

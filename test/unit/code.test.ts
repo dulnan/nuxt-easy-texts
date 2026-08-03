@@ -79,6 +79,118 @@ describe('extractMethodCalls', () => {
     })
   })
 
+  describe('escaped characters', () => {
+    // A backslash escapes the next character inside a string. Without handling
+    // it, an escaped quote flips the scanner's quote state and everything that
+    // follows is misread - the scan runs past the closing paren and throws.
+
+    it('handles an escaped single quote inside a single-quoted string', () => {
+      const code = String.raw`$texts('key', 'It\'s here')`
+      const calls = extractMethodCalls(code, '$texts(')
+
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.code).toBe(String.raw`$texts('key', 'It\'s here')`)
+    })
+
+    it('handles an escaped double quote inside a double-quoted string', () => {
+      const code = String.raw`$texts('key', "She said \"hi\" once")`
+      const calls = extractMethodCalls(code, '$texts(')
+
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.code).toBe(
+        String.raw`$texts('key', "She said \"hi\" once")`,
+      )
+    })
+
+    it('handles an odd number of escaped quotes', () => {
+      // An even number of escapes can pass by accident: the state flips twice
+      // and lands back where it started. An odd number cannot.
+      const code = String.raw`$texts('key', 'It\'s Bob\'s and Ann\'s')`
+      const calls = extractMethodCalls(code, '$texts(')
+
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.code).toBe(
+        String.raw`$texts('key', 'It\'s Bob\'s and Ann\'s')`,
+      )
+    })
+
+    it('handles an escaped backtick inside a template literal', () => {
+      const code = '$texts(`key`, `a \\` tick`)'
+      const calls = extractMethodCalls(code, '$texts(')
+
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.code).toBe('$texts(`key`, `a \\` tick`)')
+    })
+
+    it('handles an escaped backslash at the end of a string', () => {
+      const code = String.raw`$texts('key', 'path\\')`
+      const calls = extractMethodCalls(code, '$texts(')
+
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.code).toBe(String.raw`$texts('key', 'path\\')`)
+    })
+
+    it('still finds later calls after an escaped quote', () => {
+      // The broken scanner consumed the rest of the file from the first
+      // escaped quote onwards, so following calls went missing.
+      const code = String.raw`$texts('a', 'It\'s') + $texts('b', 'Second')`
+      const calls = extractMethodCalls(code, '$texts(')
+
+      expect(calls).toHaveLength(2)
+      expect(calls[0]!.code).toBe(String.raw`$texts('a', 'It\'s')`)
+      expect(calls[1]!.code).toBe(`$texts('b', 'Second')`)
+    })
+
+    it('ignores an escaped quote inside a replacements value', () => {
+      const code = String.raw`$texts('key', 'Hi @name', { '@name': 'O\'Brien' })`
+      const calls = extractMethodCalls(code, '$texts(')
+
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.code).toBe(
+        String.raw`$texts('key', 'Hi @name', { '@name': 'O\'Brien' })`,
+      )
+    })
+  })
+
+  describe('template literal interpolation', () => {
+    // Interpolations hold code, not text, and nest arbitrarily.
+
+    it('does not end the call on a literal }} inside a template', () => {
+      // The old scanner treated any "}}" inside a template literal as the end
+      // of an interpolation and stopped counting one bracket too early,
+      // truncating the extracted call.
+      const code = '$texts(`key`, `x ${a}} y`)'
+      const calls = extractMethodCalls(code, '$texts(')
+
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.code).toBe('$texts(`key`, `x ${a}} y`)')
+    })
+
+    it('handles a template literal nested inside an interpolation', () => {
+      const code = '$texts(`key`, `a ${`b ${c}`} d`)'
+      const calls = extractMethodCalls(code, '$texts(')
+
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.code).toBe('$texts(`key`, `a ${`b ${c}`} d`)')
+    })
+
+    it('handles an object literal inside an interpolation', () => {
+      const code = '$texts(`key`, `a ${fn({ x: 1 })} b`)'
+      const calls = extractMethodCalls(code, '$texts(')
+
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.code).toBe('$texts(`key`, `a ${fn({ x: 1 })} b`)')
+    })
+
+    it('handles a quoted string inside an interpolation', () => {
+      const code = "$texts(`key`, `a ${obj['k)y']} b`)"
+      const calls = extractMethodCalls(code, '$texts(')
+
+      expect(calls).toHaveLength(1)
+      expect(calls[0]!.code).toBe("$texts(`key`, `a ${obj['k)y']} b`)")
+    })
+  })
+
   describe('nested structures', () => {
     it('handles nested function calls', () => {
       const code = `$texts('key', formatText(getValue()))`
