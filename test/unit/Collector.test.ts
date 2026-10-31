@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { ModuleHelper } from '../../src/build/classes/ModuleHelper'
 import type { CollectorTemplate } from '../../src/build/templates/defineTemplate'
+import type { Extraction } from '../../src/build/types/extraction'
 import { Collector } from '../../src/build/classes/Collector'
 import { CollectedFile } from '../../src/build/classes/CollectedFile'
 import { addTemplate, addServerTemplate, addTypeTemplate } from '@nuxt/kit'
@@ -638,6 +639,55 @@ describe('Collector', () => {
       const collector = new Collector(helper)
 
       await expect(collector.init()).rejects.toThrow()
+      expect(mockLoggerBox).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\$textsPlural key "same\.key" has different singular texts \("One item" vs\. "One thing"\) and plural texts \("@count items" vs\. "@count things"\)\./,
+        ),
+      )
+    })
+
+    it('names only the plural text when only that one differs', async () => {
+      const helper = createMockHelper({
+        isDev: false,
+        getImportPatternFiles: async () => [
+          '/path/to/file1.vue',
+          '/path/to/file2.vue',
+        ],
+      })
+
+      const createFile = (filePath: string, plural: string) =>
+        createMockCollectedFile({
+          filePath,
+          fileContents: `$textsPlural("same.key", count, "One item", "${plural}")`,
+          extractions: [
+            {
+              type: 'plural',
+              fullKey: 'same.key',
+              key: 'key',
+              context: 'same',
+              singular: 'One item',
+              plural,
+              filePath,
+            },
+          ],
+        })
+
+      vi.mocked(CollectedFile.fromFilePath)
+        .mockResolvedValueOnce(
+          createFile('/path/to/file1.vue', '@count items') as any,
+        )
+        .mockResolvedValueOnce(
+          createFile('/path/to/file2.vue', '@count things') as any,
+        )
+
+      const collector = new Collector(helper)
+
+      await expect(collector.init()).rejects.toThrow()
+      expect(mockLoggerBox).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\$textsPlural key "same\.key" has different plural texts \("@count items" vs\. "@count things"\)\./,
+        ),
+      )
     })
 
     it('detects missing default text for single texts', async () => {
@@ -822,38 +872,96 @@ describe('Collector', () => {
   })
 
   describe('globalTexts integration', () => {
-    it('uses globalTexts as fallback defaults', async () => {
+    /**
+     * Init a collector whose only file holds the given extraction and return
+     * the extractions the templates receive.
+     */
+    async function initWithFile(
+      globalTexts: Record<string, string | [string, string]>,
+      extraction: Record<string, unknown>,
+    ) {
       const helper = createMockHelper({
         isDev: false,
-        globalTexts: {
-          'global.key': 'Global default text',
-        },
+        globalTexts,
         getImportPatternFiles: async () => ['/path/to/file.vue'],
       })
-
-      // File uses the key without default - should be OK because globalTexts has it
-      const mockFile = createMockCollectedFile({
-        filePath: '/path/to/file.vue',
-        fileContents: '$texts("global.key")',
-        extractions: [
-          {
-            type: 'text',
-            fullKey: 'global.key',
-            key: 'key',
-            context: 'global',
-            filePath: '/path/to/file.vue',
-            // No defaultText, but globalTexts has it
-          },
-        ],
-      })
-
-      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(mockFile as any)
+      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(
+        createMockCollectedFile({
+          filePath: '/path/to/file.vue',
+          fileContents: '$texts("x")',
+          extractions: [{ filePath: '/path/to/file.vue', ...extraction }],
+        }) as any,
+      )
 
       const collector = new Collector(helper)
+      let received: Extraction[] = []
+      collector.addTemplate({
+        type: 'collector',
+        options: { path: 'test/output' },
+        build: (extractions) => {
+          received = extractions
+          return ''
+        },
+        buildTypes: null,
+      })
+      await collector.init()
+      return received
+    }
 
-      // Should not throw because globalTexts provides the default
-      // Note: The current implementation doesn't actually use globalTexts as fallback
-      // for validation, but this test documents the expected behavior
+    it('uses a global text as the default for a $texts call without one', async () => {
+      const extractions = await initWithFile(
+        { 'global.key': 'Global default text' },
+        { type: 'text', fullKey: 'global.key', key: 'key', context: 'global' },
+      )
+
+      expect(mockLoggerError).not.toHaveBeenCalled()
+      expect(extractions).toEqual([
+        expect.objectContaining({
+          fullKey: 'global.key',
+          defaultText: 'Global default text',
+        }),
+      ])
+    })
+
+    it('uses global plural texts as the defaults for a $textsPlural call without them', async () => {
+      const extractions = await initWithFile(
+        { 'global.items': ['One item', '@count items'] },
+        {
+          type: 'plural',
+          fullKey: 'global.items',
+          key: 'items',
+          context: 'global',
+          singular: '',
+          plural: '',
+        },
+      )
+
+      expect(mockLoggerError).not.toHaveBeenCalled()
+      expect(extractions).toEqual([
+        expect.objectContaining({
+          fullKey: 'global.items',
+          singular: 'One item',
+          plural: '@count items',
+        }),
+      ])
+    })
+
+    it('prefers a default text given in code over the global text', async () => {
+      const extractions = await initWithFile(
+        { 'global.key': 'Global default text' },
+        {
+          type: 'text',
+          fullKey: 'global.key',
+          key: 'key',
+          context: 'global',
+          defaultText: 'Code default text',
+        },
+      )
+
+      expect(mockLoggerError).not.toHaveBeenCalled()
+      expect(extractions).toEqual([
+        expect.objectContaining({ defaultText: 'Code default text' }),
+      ])
     })
   })
 })

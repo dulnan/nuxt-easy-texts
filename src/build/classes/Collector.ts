@@ -137,20 +137,22 @@ export class Collector {
               (existing[0] !== extraction.singular ||
                 existing[1] !== extraction.plural)
             ) {
-              let message = `$textsPlural key "${extraction.fullKey}" has multiple `
-
+              const differences: string[] = []
               if (existing[0] !== extraction.singular) {
-                message += `singular texts ("${existing[0]}" vs. "${extraction.singular}")`
+                differences.push(
+                  `singular texts ("${existing[0]}" vs. "${extraction.singular}")`,
+                )
               }
               if (existing[1] !== extraction.plural) {
-                message += `and plural texts ("${existing[0]}" vs. ${extraction.plural})`
+                differences.push(
+                  `plural texts ("${existing[1]}" vs. "${extraction.plural}")`,
+                )
               }
 
-              message += '.'
               errors.push({
                 filePath: extraction.filePath,
                 call: extraction.call,
-                message,
+                message: `$textsPlural key "${extraction.fullKey}" has different ${differences.join(' and ')}.`,
               })
             } else {
               pluralDefaults.set(extraction.fullKey, [
@@ -165,6 +167,25 @@ export class Collector {
       }
       if (file.errors.length) {
         errors.push(...file.errors)
+      }
+    }
+
+    // Global texts provide the default for keys that are used in code without
+    // one. A default given in code takes precedence.
+    for (const extraction of this.globalExtractions) {
+      if (extraction.type === 'text') {
+        if (extraction.defaultText && !singleDefaults.has(extraction.fullKey)) {
+          singleDefaults.set(extraction.fullKey, extraction.defaultText)
+        }
+      } else if (
+        extraction.singular &&
+        extraction.plural &&
+        !pluralDefaults.has(extraction.fullKey)
+      ) {
+        pluralDefaults.set(extraction.fullKey, [
+          extraction.singular,
+          extraction.plural,
+        ])
       }
     }
 
@@ -200,7 +221,7 @@ export class Collector {
         const hasDefaultText = pluralDefaults.has(extraction.fullKey)
         if (!hasDefaultText) {
           errors.push({
-            message: `No default texts exists for $textsPlural key "${extraction.fullKey}".`,
+            message: `No default texts exist for $textsPlural key "${extraction.fullKey}".`,
             call: extraction.call,
             filePath: extraction.filePath,
           })

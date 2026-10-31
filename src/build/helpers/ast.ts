@@ -80,10 +80,19 @@ export function extractPlural(
   }
 
   const fullKey = extractLiteral(node.arguments[0], 'key', true)
-  const singular = extractLiteral(node.arguments[2], 'singular', true)
-  const plural = extractLiteral(node.arguments[3], 'plural', true)
 
-  if (fullKey && singular && plural) {
+  // A call with only key and count reuses texts defined elsewhere (another
+  // call or globalTexts). The collector reports a missing default if there
+  // is none. Once a singular text is given, both texts are required.
+  const hasDefaults = node.arguments.length > 2
+  const singular = hasDefaults
+    ? extractLiteral(node.arguments[2], 'singular', true)
+    : ''
+  const plural = hasDefaults
+    ? extractLiteral(node.arguments[3], 'plural', true)
+    : ''
+
+  if (fullKey && singular !== undefined && plural !== undefined) {
     const { key, context } = parseKey(fullKey)
     return {
       type: 'plural',

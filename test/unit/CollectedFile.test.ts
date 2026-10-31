@@ -203,6 +203,38 @@ describe('CollectedFile', () => {
       expect(file.errors[0]!.message).toContain('key')
     })
 
+    it('accepts $textsPlural without default texts', () => {
+      // The texts come from another call or from globalTexts; the collector
+      // reports a missing default if there is none.
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        "$textsPlural('items', count)",
+      )
+
+      expect(file.errors).toEqual([])
+      expect(file.extractions).toEqual([
+        expect.objectContaining({
+          type: 'plural',
+          fullKey: 'items',
+          singular: '',
+          plural: '',
+        }),
+      ])
+    })
+
+    it('requires the plural text once a singular text is given', () => {
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        "$textsPlural('items', count, 'One item')",
+      )
+
+      expect(file.extractions).toHaveLength(0)
+      expect(file.errors).toHaveLength(1)
+      expect(file.errors[0]!.message).toContain('"plural"')
+    })
+
     it('rejects interpolated template literals in $textsPlural', () => {
       const file = new CollectedFile(
         cache,
