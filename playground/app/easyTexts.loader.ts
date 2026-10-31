@@ -1,5 +1,5 @@
 import { defineEasyTextsLoader } from './../../src/loader'
-import { computed, useCurrentLanguage } from '#imports'
+import { $fetch, computed, useCurrentLanguage } from '#imports'
 
 export default defineEasyTextsLoader(() => {
   const language = useCurrentLanguage()

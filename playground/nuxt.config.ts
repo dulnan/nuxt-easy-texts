@@ -49,10 +49,7 @@ export default defineNuxtConfig({
     strict: true,
   },
 
-  compatibilityDate: '2025-04-12',
-  future: {
-    compatibilityVersion: 4,
-  },
+  compatibilityDate: '2026-10-31',
   vite: {
     server: {
       watch: {

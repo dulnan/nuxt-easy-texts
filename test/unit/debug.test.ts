@@ -136,9 +136,8 @@ describe('toDebug with advancedDebugEnabled', () => {
       advancedDebugEnabled: true,
     }))
 
-    const { toDebug: toDebugAdvanced, DEBUG_START: START } = await import(
-      '../../src/runtime/helpers/debug'
-    )
+    const { toDebug: toDebugAdvanced, DEBUG_START: START } =
+      await import('../../src/runtime/helpers/debug')
 
     const result = toDebugAdvanced('my.key', 'Hello World', true)
 
@@ -155,9 +154,8 @@ describe('toDebug with advancedDebugEnabled', () => {
       advancedDebugEnabled: true,
     }))
 
-    const { toDebug: toDebugAdvanced } = await import(
-      '../../src/runtime/helpers/debug'
-    )
+    const { toDebug: toDebugAdvanced } =
+      await import('../../src/runtime/helpers/debug')
 
     const result = toDebugAdvanced('my.key', 'Hello World', false)
     expect(result).toBe('Hello World')

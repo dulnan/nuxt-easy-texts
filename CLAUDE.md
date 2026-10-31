@@ -5,7 +5,7 @@ code in this repository.
 
 ## Overview
 
-nuxt-easy-texts is a Nuxt 3 module for key-based text/translation management. It
+nuxt-easy-texts is a Nuxt module for key-based text/translation management. It
 extracts translatable text keys from source code at build time and loads
 translations at runtime from a user-defined loader.
 
@@ -19,11 +19,11 @@ npm run dev:build        # Build playground for production
 npm run dev:start        # Start built playground server
 
 # Quality
-npm run lint             # Lint src/ with ESLint
+npm run lint             # Lint src/ with oxlint, then ESLint for the rest
 npm run lint:fix         # Lint and auto-fix
 npm run typecheck        # Type check module and playground
-npm run prettier         # Check formatting
-npm run prettier:fix     # Auto-format
+npm run format           # Check formatting (oxfmt)
+npm run format:fix       # Auto-format (oxfmt)
 
 # Build
 npm run prepack          # Build module for distribution
