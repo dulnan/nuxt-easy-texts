@@ -61,8 +61,8 @@ This ensures builds contain only keys, requiring runtime loading.
   `$texts`/`$textsPlural` globally
 - **Composable** (`src/runtime/composables/useEasyTexts.ts`) - Alternative
   access supporting language overrides
-- **Loader** (`src/loader.ts`) - User defines `~/app/easyTexts.loader.ts` to
-  load translations
+- **Loader** (`src/loader.ts`) - User defines `easyTexts.loader.ts` in the app
+  directory (`dir.app`, `app/` by default) to load translations
 
 ### Output Generators
 

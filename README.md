@@ -83,8 +83,10 @@ const text = computed(() => $texts('backToTop', 'Back to top'))
 ### Configure loader
 
 All texts are loaded at runtime. How and where the texts are loaded is up to
-you. To define a loader, create the following file in
-`~/app/easyTexts.loader.ts`:
+you. To define a loader, create the file `easyTexts.loader.ts` in your app
+directory (`app/` by default, see
+[`dir.app`](https://nuxt.com/docs/4.x/api/nuxt-config#dir)), so
+`app/easyTexts.loader.ts`:
 
 ```typescript
 import { defineEasyTextsLoader } from 'nuxt-easy-texts/loader'

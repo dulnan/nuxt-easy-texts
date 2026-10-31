@@ -87,3 +87,67 @@ describe('ModuleHelper patterns', () => {
     )
   })
 })
+
+describe('ModuleHelper loader path', () => {
+  let root: string
+
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), 'nuxt-easy-texts-'))
+    for (const path of [
+      'app/easyTexts.loader.ts',
+      'src/app/easyTexts.loader.ts',
+    ]) {
+      mkdirSync(dirname(join(root, path)), { recursive: true })
+      writeFileSync(join(root, path), '')
+    }
+  })
+
+  afterAll(() => {
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  /**
+   * A helper for an app in the temp root, which is not the working directory.
+   */
+  function createHelper(srcDir: string, appDir: string) {
+    const nuxt = {
+      options: {
+        _prepare: false,
+        dev: true,
+        rootDir: root,
+        srcDir: join(root, srcDir),
+        serverDir: join(root, 'server'),
+        buildDir: join(root, '.nuxt'),
+        dir: { app: appDir },
+        _layers: [{ config: { rootDir: root, srcDir: join(root, srcDir) } }],
+      },
+    } as unknown as Nuxt
+
+    return new ModuleHelper(nuxt, import.meta.url, { generators: [] })
+  }
+
+  it('finds the loader in the absolute app dir (Nuxt 4)', () => {
+    expect(createHelper('app', join(root, 'app')).paths.easyTextsLoader).toBe(
+      join(root, 'app/easyTexts.loader'),
+    )
+  })
+
+  // In Nuxt 3, dir.app is the relative 'app', resolved against srcDir.
+  it('finds the loader in the relative app dir (Nuxt 3)', () => {
+    expect(createHelper('.', 'app').paths.easyTextsLoader).toBe(
+      join(root, 'app/easyTexts.loader'),
+    )
+  })
+
+  it('finds the loader in the relative app dir with a custom srcDir (Nuxt 3)', () => {
+    expect(createHelper('src', 'app').paths.easyTextsLoader).toBe(
+      join(root, 'src/app/easyTexts.loader'),
+    )
+  })
+
+  it('names the expected file when the loader is missing', () => {
+    expect(() => createHelper('other', 'app')).toThrow(
+      `expected ${join(root, 'other/app/easyTexts.loader.ts')}.`,
+    )
+  })
+})

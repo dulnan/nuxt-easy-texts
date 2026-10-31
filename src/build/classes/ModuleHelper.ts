@@ -11,7 +11,7 @@ import {
   addComponent,
   type Resolver,
 } from '@nuxt/kit'
-import { relative } from 'pathe'
+import { relative, resolve } from 'pathe'
 import type { Nuxt, ResolvedNuxtTemplate } from 'nuxt/schema'
 import micromatch from 'micromatch'
 import { fileExists, logger } from '../helpers'
@@ -171,7 +171,10 @@ export class ModuleHelper {
       module: createResolver(moduleUrl),
       server: createResolver(nuxt.options.serverDir),
       src: srcResolver,
-      app: createResolver(nuxt.options.dir.app),
+      // dir.app is absolute in Nuxt 4, but the relative 'app' in Nuxt 3, where
+      // Nuxt resolves it against srcDir. Resolving it here the same way keeps
+      // it from being resolved against the working directory.
+      app: createResolver(resolve(nuxt.options.srcDir, nuxt.options.dir.app)),
       root: rootResolver,
     }
 
@@ -202,7 +205,9 @@ export class ModuleHelper {
       return filePath
     }
 
-    throw new Error(`Missing easyTexts.loader.ts in ${filePath}.`)
+    throw new Error(
+      `Missing easyTexts.loader.ts in the app directory, expected ${filePath}.ts.`,
+    )
   }
 
   /**
