@@ -5,7 +5,7 @@ code in this repository.
 
 ## Overview
 
-nuxt-easy-texts is a Nuxt 3 module for key-based text/translation management. It
+nuxt-easy-texts is a Nuxt module for key-based text/translation management. It
 extracts translatable text keys from source code at build time and loads
 translations at runtime from a user-defined loader.
 

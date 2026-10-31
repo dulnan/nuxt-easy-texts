@@ -1,4 +1,4 @@
-# nuxt-easy-texts - key-based texts/translations for Nuxt 3
+# nuxt-easy-texts - key-based texts/translations for Nuxt
 
 - Define translatable texts using keys and default texts
 - Load and override texts and translations at runtime
