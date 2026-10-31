@@ -1,6 +1,17 @@
 import type { MethodCall } from '../types/extraction'
 
 /**
+ * Files that can contain text calls: .vue and every JavaScript and TypeScript
+ * flavour (.js, .mjs, .cjs, .jsx, .ts, .mts, .cts, .tsx).
+ *
+ * The vite plugin and the dev watcher must agree with what `pattern` can
+ * collect: a scanned file whose default texts are not stripped reaches the
+ * runtime in its dev shape, where the default text is read as the
+ * replacements.
+ */
+export const SOURCE_FILE_REGEX = /\.(vue|[cm]?[jt]sx?)$/i
+
+/**
  * Extract calls to the given method.
  *
  * The provided method should be the name of the method including the first

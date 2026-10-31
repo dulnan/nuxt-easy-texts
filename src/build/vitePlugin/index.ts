@@ -3,7 +3,8 @@ import type { Nuxt } from '@nuxt/schema'
 import type { Node, CallExpression } from 'estree'
 import MagicString from 'magic-string'
 import { generate } from 'astring'
-import { extractMethodCalls } from '../helpers/code'
+import { extractMethodCalls, SOURCE_FILE_REGEX } from '../helpers/code'
+import { isDefaultTextArgument } from '../helpers/ast'
 
 function getExpression(node: Node): CallExpression | undefined {
   if (node.type === 'Program') {
@@ -15,34 +16,6 @@ function getExpression(node: Node): CallExpression | undefined {
       }
     }
   }
-}
-
-/**
- * Whether the node occupies a default-text slot, i.e. whether the call still
- * needs transforming.
- *
- * This must accept exactly what the collector accepts as a default text (see
- * extractLiteral() in ../helpers/ast.ts): a string literal or a template
- * literal. Anything else in that position - most importantly the replacements
- * object, which shifts left once the defaults have been stripped - means the
- * call is already transformed and must be left alone.
- *
- * Testing for "is a default text" rather than "is not a Literal" matters: the
- * latter also rejects template literal defaults, which then never get stripped
- * at all. Such a call reaches the runtime in its untransformed shape, where the
- * production signature ($texts(key, replacements)) reads the default text as
- * the replacements argument and drops the real replacements on the floor.
- */
-function isDefaultText(
-  node: CallExpression['arguments'][number] | undefined,
-): boolean {
-  if (!node) {
-    return false
-  }
-  if (node.type === 'TemplateLiteral') {
-    return true
-  }
-  return node.type === 'Literal' && typeof node.value === 'string'
 }
 
 type ParseFn = (code: string) => Node
@@ -65,8 +38,19 @@ export function transformTexts(
       // The transform may run more than once on the same source (e.g. once on
       // a parent .vue file and again on its ?vue&type=script sub-module), so
       // only transform while a default text is still present in 2nd position.
+      //
+      // isDefaultTextArgument() accepts exactly what the collector accepts as
+      // a default text: a string literal, a template literal or an explicitly
+      // empty value. Anything else in that position - most importantly the
+      // replacements object, which shifts left once the defaults have been
+      // stripped - means the call is already transformed. Testing for "is a
+      // default text" rather than "is not a Literal" matters: the latter also
+      // rejects template literal defaults, which then never get stripped and
+      // reach the runtime in their dev shape, where the production signature
+      // ($texts(key, replacements)) reads the default text as the
+      // replacements and drops the real ones.
       const args = node.arguments
-      if (!isDefaultText(args[1])) {
+      if (!isDefaultTextArgument(args[1])) {
         return
       }
       // Only keep the first argument (the key) and the third (replacements).
@@ -87,7 +71,7 @@ export function transformTexts(
       // See note above: the singular default sits in 3rd position, so only
       // transform while one is still there.
       const args = node.arguments
-      if (!isDefaultText(args[2])) {
+      if (!isDefaultTextArgument(args[2])) {
         return
       }
       // Only keep the first two arguments and the fifth (replacements).
@@ -106,8 +90,6 @@ export function transformTexts(
   return { code: s.toString(), magicString: s }
 }
 
-const fileRegex = /\.(vue|js|ts|mjs)$/
-
 export default function extractTexts(nuxt: Nuxt) {
   return createUnplugin(() => {
     return {
@@ -118,7 +100,7 @@ export default function extractTexts(nuxt: Nuxt) {
         const filePath = id.split('?')[0]
         if (
           !filePath ||
-          !fileRegex.test(filePath) ||
+          !SOURCE_FILE_REGEX.test(filePath) ||
           (!source.includes('$texts(') && !source.includes('$textsPlural('))
         ) {
           return

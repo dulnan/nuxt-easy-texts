@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { extractMethodCalls } from '../../src/build/helpers/code'
+import {
+  extractMethodCalls,
+  SOURCE_FILE_REGEX,
+} from '../../src/build/helpers/code'
 
 describe('extractMethodCalls', () => {
   describe('basic extraction', () => {
@@ -309,4 +312,29 @@ const a = $texts('a', 'A')`
       expect(calls[1]!.end).toBe(25)
     })
   })
+})
+
+describe('SOURCE_FILE_REGEX', () => {
+  // The vite plugin only strips default texts from matching files, so every
+  // file type that `pattern` can collect must match.
+  it.each([
+    'a.vue',
+    'a.js',
+    'a.mjs',
+    'a.cjs',
+    'a.jsx',
+    'a.ts',
+    'a.mts',
+    'a.cts',
+    'a.tsx',
+  ])('matches %s', (file) => {
+    expect(SOURCE_FILE_REGEX.test(`/app/${file}`)).toBe(true)
+  })
+
+  it.each(['a.css', 'a.json', 'a.html', 'a.vue.map'])(
+    'does not match %s',
+    (file) => {
+      expect(SOURCE_FILE_REGEX.test(`/app/${file}`)).toBe(false)
+    },
+  )
 })

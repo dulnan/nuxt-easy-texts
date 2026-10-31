@@ -67,6 +67,48 @@ const b = $texts('key2', 'Text 2')`
     })
   })
 
+  describe('explicitly empty default texts', () => {
+    // $texts('key', undefined, replacements) passes replacements without a
+    // default text. Left untransformed, production would read the undefined
+    // as the replacements and drop the real ones.
+
+    /**
+     * The arguments of the transformed call, as source code.
+     */
+    const transformedArgs = (source: string) => {
+      const result = transform(source)
+      const program = parseFn(result) as any
+      return program.body[0].expression.arguments.map((arg: any) =>
+        result.slice(arg.start, arg.end).replace(/\s+/g, ' '),
+      )
+    }
+
+    it.each(['undefined', 'null', 'void 0'])(
+      'strips %s in the $texts default text position',
+      (empty) => {
+        expect(
+          transformedArgs(`$texts('myKey', ${empty}, { '@name': name })`),
+        ).toEqual([`'myKey'`, `{ '@name': name }`])
+      },
+    )
+
+    it.each(['undefined', 'null', 'void 0'])(
+      'strips %s in the $textsPlural default text positions',
+      (empty) => {
+        expect(
+          transformedArgs(
+            `$textsPlural('items', count, ${empty}, ${empty}, { '@name': name })`,
+          ),
+        ).toEqual([`'items'`, 'count', `{ '@name': name }`])
+      },
+    )
+
+    it('produces the same result when run twice', () => {
+      const once = transform(`$texts('myKey', undefined, { '@name': name })`)
+      expect(transform(once)).toBe(once)
+    })
+  })
+
   describe('idempotence (regression tests for double-transform bug)', () => {
     // The transform may run more than once on the same source (once on the
     // parent .vue file, again on its ?vue&type=script sub-module). Without

@@ -163,6 +163,41 @@ describe('CollectedFile', () => {
     })
   })
 
+  describe('default text position', () => {
+    it.each(['undefined', 'null', 'void 0'])(
+      'accepts %s to pass replacements without a default text',
+      (empty) => {
+        const file = new CollectedFile(
+          cache,
+          '/path/to/file.vue',
+          `$texts('key', ${empty}, { '@name': name })`,
+        )
+
+        expect(file.errors).toEqual([])
+        expect(file.extractions).toEqual([
+          expect.objectContaining({ fullKey: 'key', defaultText: undefined }),
+        ])
+      },
+    )
+
+    // Production calls have no default text, so anything else in this
+    // position would be read as the replacements.
+    it.each(['someVariable', '42', `'Hello ' + name`, 'getText()'])(
+      'rejects %s as the default text',
+      (value) => {
+        const file = new CollectedFile(
+          cache,
+          '/path/to/file.vue',
+          `$texts('key', ${value})`,
+        )
+
+        expect(file.extractions).toEqual([])
+        expect(file.errors).toHaveLength(1)
+        expect(file.errors[0]!.message).toContain('"defaultText"')
+      },
+    )
+  })
+
   describe('error handling', () => {
     it('captures errors for invalid $texts calls', () => {
       // This will cause a parse error because the AST won't match expected structure

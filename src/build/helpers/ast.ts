@@ -15,6 +15,37 @@ export function getExpression(
   }
 }
 
+/**
+ * Whether the argument may stand in a default text position.
+ *
+ * That is a string literal, a template literal, or an explicitly empty value
+ * (undefined, null or void 0), which passes replacements without a default
+ * text: $texts('key', undefined, { '@name': name }).
+ *
+ * The collector rejects anything else there, and the vite plugin strips
+ * exactly these. Production calls have no default text, so a variable left in
+ * that position would be read as the replacements.
+ */
+export function isDefaultTextArgument(
+  node: Expression | SpreadElement | undefined,
+): boolean {
+  if (!node) {
+    return false
+  }
+  switch (node.type) {
+    case 'TemplateLiteral':
+      return true
+    case 'Literal':
+      return typeof node.value === 'string' || node.raw === 'null'
+    case 'Identifier':
+      return node.name === 'undefined'
+    case 'UnaryExpression':
+      return node.operator === 'void'
+    default:
+      return false
+  }
+}
+
 export function extractLiteral(
   literal: Expression | SpreadElement | undefined,
   argument: string,
@@ -125,7 +156,13 @@ export function extractSingle(
   }
 
   const fullKey = extractLiteral(node.arguments[0], 'key', true)
-  const defaultText = extractLiteral(node.arguments[1], 'defaultText')
+  const defaultArgument = node.arguments[1]
+  if (defaultArgument && !isDefaultTextArgument(defaultArgument)) {
+    throw new Error(
+      'Only a string can be used as the "defaultText" argument. To pass replacements without a default text, use undefined in its place.',
+    )
+  }
+  const defaultText = extractLiteral(defaultArgument, 'defaultText')
 
   if (fullKey) {
     const { key, context } = parseKey(fullKey)
