@@ -3,7 +3,13 @@ import {
   type CollectorTemplate,
 } from '../defineTemplate'
 
-const input = (v: string) => '"' + v.replaceAll('"', '\\"') + '"'
+/**
+ * Encode a value as a GraphQL string literal.
+ *
+ * Every escape sequence JSON.stringify emits (\" \\ \b \f \n \r \t \uXXXX)
+ * is also valid in a GraphQL string, so the result is always a valid literal.
+ */
+const input = (v: string) => JSON.stringify(v)
 
 export default function (path: string): CollectorTemplate {
   return defineCollectorTemplate(
