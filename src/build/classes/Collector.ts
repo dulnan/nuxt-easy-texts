@@ -42,6 +42,11 @@ export class Collector {
   private templateResult: Map<string, string> = new Map()
 
   /**
+   * The full keys of all extractions, from files and globalTexts.
+   */
+  private knownKeys = new Set<string>()
+
+  /**
    * The module helper.
    */
   private helper: ModuleHelper
@@ -85,6 +90,13 @@ export class Collector {
 
   public reset() {
     this.files.clear()
+  }
+
+  /**
+   * Whether the key was extracted from a scanned file or is a global text.
+   */
+  public hasKey(fullKey: string): boolean {
+    return this.knownKeys.has(fullKey)
   }
 
   private getTemplate(template: string): string {
@@ -188,6 +200,8 @@ export class Collector {
         ])
       }
     }
+
+    this.knownKeys = new Set(extractionsMap.keys())
 
     const extractions = [...extractionsMap.values()]
       .sort((a, b) => b.fullKey.localeCompare(a.fullKey))

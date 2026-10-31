@@ -931,6 +931,38 @@ describe('Collector', () => {
     })
   })
 
+  describe('hasKey', () => {
+    it('knows the keys from scanned files and globalTexts', async () => {
+      const helper = createMockHelper({
+        globalTexts: { 'global.key': 'Global' },
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
+      })
+      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(
+        createMockCollectedFile({
+          filePath: '/path/to/file.vue',
+          fileContents: '$texts("file.key", "File")',
+          extractions: [
+            {
+              type: 'text',
+              fullKey: 'file.key',
+              key: 'key',
+              context: 'file',
+              defaultText: 'File',
+              filePath: '/path/to/file.vue',
+            },
+          ],
+        }) as any,
+      )
+
+      const collector = new Collector(helper)
+      await collector.init()
+
+      expect(collector.hasKey('file.key')).toBe(true)
+      expect(collector.hasKey('global.key')).toBe(true)
+      expect(collector.hasKey('other.key')).toBe(false)
+    })
+  })
+
   describe('globalTexts integration', () => {
     /**
      * Init a collector whose only file holds the given extraction and return
