@@ -2,9 +2,29 @@ import { computed, defineNuxtPlugin, useState, watch } from '#imports'
 import { easyTextsLoader } from '#nuxt-easy-texts/loader'
 import { DEBUG_ENABLED } from '../helpers/constants'
 import { getPluralTexts, getSingleText } from '../helpers/textsFunctions'
-import type { Replacements, TextsState } from '../types'
+import type {
+  EasyTextsFunctions,
+  NuxtEasyTextsApp,
+  Replacements,
+  TextsState,
+} from '../types'
 
-export default defineNuxtPlugin<Record<string, unknown>>({
+/**
+ * The shape of what this plugin provides.
+ *
+ * This must be concrete: Nuxt maps every plugin's provide type through
+ * `Decorate<T> = { [K in keyof T as `$${K}`]: T[K] }` and merges the result
+ * into both `NuxtApp` and `ComponentCustomProperties`. A `Record<string,
+ * unknown>` here would collapse into a `` `$${string}` `` index signature,
+ * making every `$`-prefixed typo resolve to `unknown` app-wide.
+ */
+type EasyTextsProvide = {
+  nuxtEasyTexts: NuxtEasyTextsApp
+  texts: EasyTextsFunctions['$texts']
+  textsPlural: EasyTextsFunctions['$textsPlural']
+}
+
+export default defineNuxtPlugin<EasyTextsProvide>({
   name: 'nuxt-easy-texts',
   dependsOn: easyTextsLoader.options.dependsOn,
   setup: async () => {
@@ -124,14 +144,18 @@ export default defineNuxtPlugin<Record<string, unknown>>({
           )
         }
 
+    // The public $texts/$textsPlural types are overload sets keyed on the
+    // generated key unions, while the implementations above are plain
+    // (key: string, ...) functions whose arity differs between dev and prod.
+    // The cast asserts the public contract at the provide boundary.
     return {
       provide: {
         nuxtEasyTexts: {
           loadTranslationsForLanguage,
           currentLanguage,
         },
-        texts: $texts,
-        textsPlural: textsPlural,
+        texts: $texts as EasyTextsFunctions['$texts'],
+        textsPlural: textsPlural as EasyTextsFunctions['$textsPlural'],
       },
     }
   },
