@@ -242,6 +242,17 @@ describe('drupal-graphql-texts generator', () => {
     ])
   })
 
+  it('sorts the fields independently of the system locale', async () => {
+    // In e.g. Swedish, "ä" sorts after "z"; in English, next to "a".
+    const template = generatorDrupal('fragment.graphql')
+    const code = await template.build!(
+      [text('z', 'Z'), text('ä', 'Ä'), text('a', 'A')],
+      helper,
+    )
+
+    expect(parseFields(code).map((args) => args.key)).toEqual(['a', 'ä', 'z'])
+  })
+
   it.each(TRICKY)('keeps the plural texts %j unchanged', async (value) => {
     const template = generatorDrupal('fragment.graphql')
     const code = await template.build!(

@@ -48,7 +48,9 @@ export default function (path: string): CollectorTemplate {
 
           return `${fieldName}: ${graphqlFieldName}(${argsString})${typeProperties}`
         })
-        .sort((a, b) => a.localeCompare(b))
+        // A fixed locale, so that the output doesn't depend on the locale of
+        // the machine that builds it.
+        .sort((a, b) => a.localeCompare(b, 'en'))
         .join('\n  ')
 
       // Build the GraphQL query.

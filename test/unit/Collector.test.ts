@@ -966,6 +966,44 @@ describe('Collector', () => {
     })
   })
 
+  describe('output order', () => {
+    it('sorts the extractions independently of the system locale', async () => {
+      // In e.g. Swedish, "ä" sorts after "z"; in English, next to "a".
+      const keys = ['a.key', 'z.key', 'ä.key']
+      const helper = createMockHelper({
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
+      })
+      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(
+        createMockCollectedFile({
+          filePath: '/path/to/file.vue',
+          fileContents: '$texts("a.key", "A")',
+          extractions: keys.map((fullKey) => ({
+            type: 'text',
+            fullKey,
+            key: 'key',
+            defaultText: fullKey,
+            filePath: '/path/to/file.vue',
+          })),
+        }) as any,
+      )
+
+      const collector = new Collector(helper)
+      let received: string[] = []
+      collector.addTemplate({
+        type: 'collector',
+        options: { path: 'test/output' },
+        build: (extractions) => {
+          received = extractions.map((e) => e.fullKey)
+          return ''
+        },
+        buildTypes: null,
+      })
+      await collector.init()
+
+      expect(received).toEqual(['z.key', 'ä.key', 'a.key'])
+    })
+  })
+
   describe('hasKey', () => {
     it('knows the keys from scanned files and globalTexts', async () => {
       const helper = createMockHelper({

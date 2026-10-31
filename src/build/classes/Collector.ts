@@ -204,7 +204,9 @@ export class Collector {
     this.knownKeys = new Set(extractionsMap.keys())
 
     const extractions = [...extractionsMap.values()]
-      .sort((a, b) => b.fullKey.localeCompare(a.fullKey))
+      // A fixed locale, so that the generated output doesn't depend on the
+      // locale of the machine that builds it.
+      .sort((a, b) => b.fullKey.localeCompare(a.fullKey, 'en'))
       .map((extraction) => {
         if (extraction.type === 'text') {
           return {
