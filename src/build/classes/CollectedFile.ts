@@ -60,11 +60,20 @@ export class CollectedFile {
     const message =
       e instanceof Error ? e.message : 'Failed to parse text arguments.'
 
+    this.addError(message, call)
+  }
+
+  /**
+   * Errors are part of the key, so that update() reports a change when only
+   * the errors differ and the dev server logs them.
+   */
+  private addError(message: string, call: MethodCall) {
     this.errors.push({
       message,
       call,
       filePath: this.filePath,
     })
+    this.key += `\0${call.code}\0${message}`
   }
 
   /**
@@ -104,11 +113,17 @@ export class CollectedFile {
       call: MethodCall,
     ) => T | undefined,
   ) {
-    const calls = extractMethodCalls(this.fileContents, name)
+    const calls = extractMethodCalls(this.fileContents, name, (start) => {
+      this.addError(
+        `Found "${name}" without a closing parenthesis. A mention in a comment or string is also read as a call.`,
+        { code: name, start, end: start + name.length },
+      )
+    })
     for (const call of calls) {
       const cached = cache.get(call.code)
       if (cached) {
-        this.addExtraction({ ...cached, call })
+        // The cached extraction may come from another file with the same call.
+        this.addExtraction({ ...cached, call, filePath: this.filePath })
         continue
       }
 

@@ -370,5 +370,51 @@ describe('CollectedFile', () => {
       expect(file2.extractions).toHaveLength(1)
       expect(cache.singleCache.size).toBe(1)
     })
+
+    it('reports the file path of the file that contains the cached call', () => {
+      const content = `$texts('shared.key')`
+
+      new CollectedFile(cache, '/path/to/file1.vue', content)
+      const file2 = new CollectedFile(cache, '/path/to/file2.vue', content)
+
+      expect(file2.extractions[0]!.filePath).toBe('/path/to/file2.vue')
+    })
+  })
+
+  describe('unclosed calls', () => {
+    const content = `// Use $texts( for all texts.
+const a = $texts('a', 'A')`
+
+    it('reports an unclosed call as an error at its position', () => {
+      const file = new CollectedFile(cache, '/path/to/file.vue', content)
+
+      expect(file.errors).toEqual([
+        {
+          message: expect.stringContaining('without a closing parenthesis'),
+          filePath: '/path/to/file.vue',
+          call: { code: '$texts(', start: 7, end: 14 },
+        },
+      ])
+    })
+
+    it('still extracts the calls that follow it', () => {
+      const file = new CollectedFile(cache, '/path/to/file.vue', content)
+
+      expect(file.extractions).toEqual([
+        expect.objectContaining({ fullKey: 'a', defaultText: 'A' }),
+      ])
+    })
+
+    it('reports a change when only an error is added', async () => {
+      const valid = `const a = $texts('a', 'A')`
+      const file = new CollectedFile(cache, '/path/to/file.vue', valid)
+
+      vi.mocked(fs.readFile).mockResolvedValue(
+        Buffer.from(valid + ' // $texts('),
+      )
+
+      expect(await file.update()).toBe(true)
+      expect(file.errors).toHaveLength(1)
+    })
   })
 })

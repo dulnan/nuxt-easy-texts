@@ -210,6 +210,37 @@ describe('Collector', () => {
       )
     })
 
+    it('logs an unexpected error and keeps it as the cause', async () => {
+      const helper = createMockHelper({
+        isDev: false,
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
+      })
+      const cause = new Error('EACCES: permission denied')
+      vi.mocked(CollectedFile.fromFilePath).mockRejectedValue(cause)
+
+      const collector = new Collector(helper)
+
+      await expect(collector.init()).rejects.toMatchObject({
+        message: 'nuxt-easy-texts initialisation failed.',
+        cause,
+      })
+      expect(mockLoggerError).toHaveBeenCalledWith(cause)
+    })
+
+    it('logs an unexpected error in dev mode without throwing', async () => {
+      const helper = createMockHelper({
+        isDev: true,
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
+      })
+      const cause = new Error('EACCES: permission denied')
+      vi.mocked(CollectedFile.fromFilePath).mockRejectedValue(cause)
+
+      const collector = new Collector(helper)
+
+      await expect(collector.init()).resolves.toBeUndefined()
+      expect(mockLoggerError).toHaveBeenCalledWith(cause)
+    })
+
     it('does not throw in dev mode on validation failure', async () => {
       const helper = createMockHelper({
         isDev: true,

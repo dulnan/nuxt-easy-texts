@@ -264,6 +264,19 @@ describe('extractMethodCalls', () => {
       )
     })
 
+    it('passes an unmatched call to onUnmatched and continues after it', () => {
+      const code = `// Use $texts( for all texts.
+const a = $texts('a', 'A')`
+      const unmatched: number[] = []
+
+      const calls = extractMethodCalls(code, '$texts(', (start) =>
+        unmatched.push(start),
+      )
+
+      expect(unmatched).toEqual([7])
+      expect(calls.map((c) => c.code)).toEqual([`$texts('a', 'A')`])
+    })
+
     it('handles consecutive calls without spaces', () => {
       const code = `$texts('a','A')$texts('b','B')`
       const calls = extractMethodCalls(code, '$texts(')

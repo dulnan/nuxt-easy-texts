@@ -8,8 +8,16 @@ import type { MethodCall } from '../types/extraction'
  *
  * The return value is an array of all occurences of full calls to the
  * given method.
+ *
+ * An occurrence without a closing parenthesis (e.g. "$texts(" in a comment)
+ * is passed to onUnmatched with its start index and skipped, and the search
+ * continues after it. Without onUnmatched, it throws.
  */
-export function extractMethodCalls(code: string, method: string): MethodCall[] {
+export function extractMethodCalls(
+  code: string,
+  method: string,
+  onUnmatched?: (start: number) => void,
+): MethodCall[] {
   const methodCalls: MethodCall[] = []
   const methodLength = method.length
   let i = 0
@@ -85,6 +93,11 @@ export function extractMethodCalls(code: string, method: string): MethodCall[] {
       })
       // Move index to the end of the current method call.
       i = endIndex
+    } else if (onUnmatched) {
+      onUnmatched(startIndex)
+      // Calls that follow were swallowed by the scan, so continue right
+      // after the method name to find them.
+      i = startIndex + methodLength
     } else {
       throw new Error('Unmatched parentheses in the code.')
     }

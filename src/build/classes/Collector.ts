@@ -339,18 +339,28 @@ export class Collector {
    * valid.
    */
   public async init(): Promise<void> {
+    let error: unknown = null
     try {
       await this.initDocuments()
       const { errors } = await this.buildState()
       if (errors.length) {
-        throw new Error('nuxt-easy-texts initialisation failed.')
+        // Already logged by buildState().
+        error = new Error('Text extraction found errors.')
       }
-    } catch {
-      // During dev mode, don't rethrow the error.
-      if (this.helper.isDev) {
-        return
-      }
-      throw new Error('nuxt-easy-texts initialisation failed.')
+    } catch (e) {
+      // Anything unexpected, e.g. a file that can't be read or a generator
+      // that throws. Log it, as it would be lost otherwise.
+      logger.error('Failed to extract texts.')
+      logger.error(e)
+      error = e
+    }
+
+    // During dev mode, don't throw: the errors are logged and fixing them
+    // triggers a rebuild.
+    if (error && !this.helper.isDev) {
+      throw new Error('nuxt-easy-texts initialisation failed.', {
+        cause: error,
+      })
     }
   }
 
