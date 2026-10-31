@@ -51,21 +51,28 @@ export function extractLiteral(
   }
 }
 
+/**
+ * Split a full key into its context and key.
+ *
+ * The context is the part before the first dot, the key is everything after
+ * it, so further dots stay in the key:
+ * - 'search'           => key 'search'
+ * - 'global.homepage'  => context 'global', key 'homepage'
+ * - 'cart.items.title' => context 'cart', key 'items.title'
+ */
 export function parseKey(v: string): { key: string; context?: string } {
-  // e.g. 'global.homepage'
-  // ['global', 'homepage']
-  const [a, b] = v.split('.', 2)
+  const [context, ...rest] = v.split('.')
+  const key = rest.join('.')
 
-  // e.g. 'search'
-  // ['search', undefined]
-  if (!b) {
+  // No dot, or nothing after it.
+  if (!key) {
     return {
-      key: a!,
+      key: context!,
     }
   }
   return {
-    key: b,
-    context: a,
+    key,
+    context,
   }
 }
 

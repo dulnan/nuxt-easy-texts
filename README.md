@@ -285,6 +285,9 @@ This will generate the following extraction:
 }
 ```
 
+Only the first dot separates the context from the key, so `cart.items.title` has
+the context `cart` and the key `items.title`.
+
 ## Debug Mode
 
 This is helpful if you want to offer content editors in a CMS a way to easily

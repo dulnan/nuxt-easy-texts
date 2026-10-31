@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import fs from 'node:fs'
 import { falsy, fileExists, isSingleText } from '../../src/build/helpers/index'
+import { parseKey } from '../../src/build/helpers/ast'
 import type {
   Extraction,
   ExtractionText,
@@ -120,6 +121,20 @@ describe('build helpers', () => {
 
       expect(result).toBe(null)
       expect(fs.existsSync).toHaveBeenCalledTimes(4) // direct + 3 extensions
+    })
+  })
+
+  describe('parseKey', () => {
+    it.each([
+      ['search', { key: 'search' }],
+      ['global.homepage', { key: 'homepage', context: 'global' }],
+      ['cart.items.title', { key: 'items.title', context: 'cart' }],
+      ['a.b.c.d', { key: 'b.c.d', context: 'a' }],
+      // Edge cases keep their previous result.
+      ['trailing.', { key: 'trailing' }],
+      ['.leading', { key: 'leading', context: '' }],
+    ])('parses %j', (fullKey, expected) => {
+      expect(parseKey(fullKey)).toEqual(expected)
     })
   })
 

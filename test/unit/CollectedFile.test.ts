@@ -325,6 +325,26 @@ describe('CollectedFile', () => {
       expect(file.extractions[0]!.context).toBe('global')
     })
 
+    it('keeps further dots in the key', () => {
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        `$texts('cart.items.title', 'Title'); $textsPlural('cart.items.count', n, 'One', '@count')`,
+      )
+
+      expect(file.errors).toEqual([])
+      expect(
+        file.extractions.map(({ fullKey, key, context }) => ({
+          fullKey,
+          key,
+          context,
+        })),
+      ).toEqual([
+        { fullKey: 'cart.items.title', key: 'items.title', context: 'cart' },
+        { fullKey: 'cart.items.count', key: 'items.count', context: 'cart' },
+      ])
+    })
+
     it('extracts key without context (single word)', () => {
       const file = new CollectedFile(
         cache,
