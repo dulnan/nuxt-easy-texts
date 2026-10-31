@@ -143,6 +143,63 @@ describe('keys template', () => {
   })
 })
 
+/**
+ * Type check the given in-memory files and return the error messages.
+ */
+function typeErrors(files: Record<string, string>): string[] {
+  const options: ts.CompilerOptions = {
+    strict: true,
+    noEmit: true,
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext,
+    lib: ['lib.es2022.d.ts'],
+    types: [],
+  }
+  const host = ts.createCompilerHost(options)
+  const getSourceFile = host.getSourceFile.bind(host)
+  host.getSourceFile = (name, language, ...rest) =>
+    name in files
+      ? ts.createSourceFile(name, files[name]!, language)
+      : getSourceFile(name, language, ...rest)
+  const program = ts.createProgram(Object.keys(files), options, host)
+  return ts
+    .getPreEmitDiagnostics(program)
+    .map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'))
+}
+
+describe('keys template types', () => {
+  async function check(code: string) {
+    const declarations = await keysTemplate.buildTypes!(
+      [
+        text('single.key', 'Single'),
+        plural('plural.key', 'One item', '@count items'),
+      ],
+      helper,
+    )
+    return typeErrors({
+      '/keys.d.ts': declarations,
+      '/use.ts': `import { KEYS, type EasyTextsKey } from '#nuxt-easy-texts/keys'
+${code}
+export {}`,
+    })
+  }
+
+  it('accepts single and plural keys as EasyTextsKey', async () => {
+    expect(
+      await check(`const single: EasyTextsKey = 'single.key'
+const pluralKey: EasyTextsKey = 'plural.key'
+const all: EasyTextsKey[] = KEYS
+const first: 'single.key' | 'plural.key' | undefined = KEYS[0]`),
+    ).toEqual([])
+  })
+
+  it('rejects unknown keys as EasyTextsKey', async () => {
+    expect(await check(`const key: EasyTextsKey = 'missing.key'`)).toEqual([
+      expect.stringContaining(`'"missing.key"' is not assignable`),
+    ])
+  })
+})
+
 describe('drupal-graphql-texts generator', () => {
   /**
    * Returns the arguments of every generated field as decoded strings.

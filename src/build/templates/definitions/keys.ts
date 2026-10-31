@@ -71,7 +71,7 @@ declare module '#nuxt-easy-texts/keys' {
   /**
    * Any valid single or plural text key.
    */
-  export type EasyTextsKey = EasyTextSingleKey & EasyTextPluralKey
+  export type EasyTextsKey = EasyTextSingleKey | EasyTextPluralKey
 
   /**
    * All text keys.
