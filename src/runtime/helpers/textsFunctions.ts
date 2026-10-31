@@ -1,6 +1,19 @@
 import type { Replacements, TextsState } from '../types'
 import { toDebug } from './debug'
 
+/**
+ * Insert the count into a plural text.
+ *
+ * Replacement values are passed as functions: a string replacement would
+ * interpret `$&`, `` $` ``, `$'` and `$$` in the value as patterns.
+ */
+function replaceCount(
+  text: string,
+  count: number | string | null | undefined,
+): string {
+  return text.replace('@count', () => (count || 0).toString())
+}
+
 function replace(text: string, replacements?: Replacements): string {
   if (!replacements) {
     return text
@@ -8,8 +21,9 @@ function replace(text: string, replacements?: Replacements): string {
 
   let replaced = text
 
-  for (const [search, replace] of Object.entries(replacements)) {
-    replaced = replaced.replaceAll(search, replace.toString())
+  for (const [search, value] of Object.entries(replacements)) {
+    // A function, so that the value is inserted literally (see replaceCount).
+    replaced = replaced.replaceAll(search, () => value.toString())
   }
 
   return replaced
@@ -58,7 +72,7 @@ export function getPluralTexts(
       const text =
         count === 1 || count === '1'
           ? candidate[0]!
-          : candidate[1]!.replace('@count', (count || 0).toString())
+          : replaceCount(candidate[1]!, count)
       return toDebug(key, replace(text, replacements), isDebug)
     }
   }
@@ -67,9 +81,7 @@ export function getPluralTexts(
   // available (i.e. the call is untransformed). Tree-shaken in production.
   if (import.meta.dev && singular !== undefined && plural !== undefined) {
     const text =
-      count === 1 || count === '1'
-        ? singular
-        : plural.replace('@count', (count || 0).toString())
+      count === 1 || count === '1' ? singular : replaceCount(plural, count)
     return toDebug(key, replace(text, replacements), isDebug)
   }
 

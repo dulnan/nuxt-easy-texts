@@ -479,4 +479,60 @@ describe('textsFunctions', () => {
       })
     })
   })
+
+  // Replacement values often come from user data (a name, a search term).
+  // String.prototype.replace treats `$&`, `` $` ``, `$'` and `$$` in a string
+  // replacement as patterns, so they must be inserted literally instead.
+  describe('replacement values containing $ patterns', () => {
+    const patterns = ['$&', '$`', "$'", '$$', '$1', '$<name>']
+
+    it.each(patterns)('inserts %s literally in a single text', (value) => {
+      const texts: TextsState = { greeting: 'Hello @name, welcome!' }
+      expect(getSingleText('greeting', false, texts, { '@name': value })).toBe(
+        `Hello ${value}, welcome!`,
+      )
+    })
+
+    it.each(patterns)('inserts %s literally in a plural text', (value) => {
+      const texts: TextsState = {
+        items: ['@name has one item', '@name has @count items'],
+      }
+      expect(getPluralTexts('items', 2, false, texts, { '@name': value })).toBe(
+        `${value} has 2 items`,
+      )
+    })
+
+    it.each(patterns)('inserts a count of %s literally', (value) => {
+      const texts: TextsState = { items: ['One item', '@count items'] }
+      expect(getPluralTexts('items', value, false, texts)).toBe(
+        `${value} items`,
+      )
+    })
+
+    it.each(patterns)(
+      'inserts %s literally in the dev-mode default text',
+      (value) => {
+        expect(
+          getSingleText(
+            'missing',
+            false,
+            null,
+            { '@name': value },
+            'Hello @name!',
+          ),
+        ).toBe(`Hello ${value}!`)
+        expect(
+          getPluralTexts(
+            'missing',
+            value,
+            false,
+            null,
+            undefined,
+            'One item',
+            '@count items',
+          ),
+        ).toBe(`${value} items`)
+      },
+    )
+  })
 })
