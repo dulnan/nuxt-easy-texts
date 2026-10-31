@@ -706,6 +706,45 @@ describe('Collector', () => {
       )
     })
 
+    it('reports the errors of a template validator', async () => {
+      const helper = createMockHelper({
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
+      })
+      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(
+        createMockCollectedFile({
+          filePath: '/path/to/file.vue',
+          fileContents: '$texts("bad-key", "Text")',
+          extractions: [
+            {
+              type: 'text',
+              fullKey: 'bad-key',
+              key: 'bad-key',
+              defaultText: 'Text',
+              filePath: '/path/to/file.vue',
+            },
+          ],
+        }) as any,
+      )
+
+      const collector = new Collector(helper)
+      collector.addTemplate({
+        type: 'collector',
+        options: { path: 'test/output' },
+        build: () => '',
+        buildTypes: null,
+        validate: (extractions) =>
+          extractions.map((e) => ({
+            message: `Template can't use "${e.fullKey}".`,
+            filePath: e.filePath,
+          })),
+      })
+
+      await expect(collector.init()).rejects.toThrow()
+      expect(mockLoggerBox).toHaveBeenCalledWith(
+        expect.stringContaining(`Template can't use "bad-key".`),
+      )
+    })
+
     it('names only the plural text when only that one differs', async () => {
       const helper = createMockHelper({
         isDev: false,

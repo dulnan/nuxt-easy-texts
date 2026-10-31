@@ -242,6 +242,48 @@ describe('drupal-graphql-texts generator', () => {
     ])
   })
 
+  describe('key validation', () => {
+    const validate = (extractions: Extraction[]) =>
+      generatorDrupal('fragment.graphql').validate!(extractions)
+
+    it('accepts keys that become valid GraphQL field names', () => {
+      expect(
+        validate(
+          ['homeTitle', 'cart.addButton', 'a_b.c1', '_private', 'x.y.z'].map(
+            (key) => text(key, 'Text'),
+          ),
+        ),
+      ).toEqual([])
+    })
+
+    it.each(['cart.add-button', 'with space', '404.title', 'größe', 'a.🎉'])(
+      'rejects %j, whose field name is not a GraphQL name',
+      (key) => {
+        const extraction = {
+          ...text(key, 'Text'),
+          call: { code: `$texts('${key}', 'Text')`, start: 10, end: 30 },
+        }
+
+        expect(validate([extraction])).toEqual([
+          {
+            message: expect.stringContaining(`Key "${key}" can't be used`),
+            filePath: 'a.vue',
+            call: extraction.call,
+          },
+        ])
+      },
+    )
+
+    it('rejects keys that become the same field name', () => {
+      const errors = validate([text('a.b', 'One'), text('a__b', 'Two')])
+
+      expect(errors).toHaveLength(1)
+      expect(errors[0]!.message).toContain(
+        'Keys "a.b" and "a__b" can\'t both be used',
+      )
+    })
+  })
+
   it('sorts the fields independently of the system locale', async () => {
     // In e.g. Swedish, "ä" sorts after "z"; in English, next to "a".
     const template = generatorDrupal('fragment.graphql')

@@ -246,6 +246,10 @@ export class Collector {
     }
 
     for (const template of this.templates) {
+      if (template.validate) {
+        errors.push(...template.validate(extractions))
+      }
+
       if (template.build) {
         const content = await template.build(extractions, this.helper)
         this.templateResult.set(template.options.path + 'build', content)

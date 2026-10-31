@@ -233,6 +233,13 @@ fragment easyTexts on TextsLoader {
 }
 ```
 
+Each key is loaded as a GraphQL field whose name is the key with dots replaced
+by double underscores, e.g. `cart.addButton` becomes `cart__addButton`. That
+name must be a valid GraphQL name, so with this generator keys may only contain
+ASCII letters, digits, underscores and dots, and must not start with a digit.
+Two keys must also not become the same name, like `a.b` and `a__b`. The build
+fails with an error pointing at the call otherwise.
+
 ### Load the texts
 
 All default/singular/plural texts in your code are removed via a vite plugin,
