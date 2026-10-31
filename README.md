@@ -244,7 +244,12 @@ const { $texts, $textsPlural } = useEasyTexts()
 const title = $texts('footerCopyright', '© 2024 ACME')
 
 const counter = ref(1)
-const countText = $texts('countText', counter.value, 'One item', '@count items')
+const countText = $textsPlural(
+  'countText',
+  counter.value,
+  'One item',
+  '@count items',
+)
 ```
 
 This is compiled to:
