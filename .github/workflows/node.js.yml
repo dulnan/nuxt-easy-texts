@@ -47,7 +47,7 @@ jobs:
         run: |
           npm run typecheck
 
-      - name: ESLint
+      - name: Lint
         run: |
           npm run lint
 

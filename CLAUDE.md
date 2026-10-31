@@ -19,7 +19,7 @@ npm run dev:build        # Build playground for production
 npm run dev:start        # Start built playground server
 
 # Quality
-npm run lint             # Lint src/ with ESLint
+npm run lint             # Lint src/ with oxlint, then ESLint for the rest
 npm run lint:fix         # Lint and auto-fix
 npm run typecheck        # Type check module and playground
 npm run format           # Check formatting (oxfmt)
