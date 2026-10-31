@@ -19,7 +19,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, onBeforeUnmount } from '#imports'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from '#imports'
 
 const props = defineProps<{
   keys: string[]
@@ -29,13 +29,30 @@ const props = defineProps<{
   viewportSize: { width: number; height: number }
 }>()
 
-const rect = props.element.getBoundingClientRect()
-
 const isVisible = ref(false)
-const width = ref(rect.width)
-const height = ref(rect.height)
-const x = ref(rect.x)
-const y = ref(rect.y)
+const width = ref(0)
+const height = ref(0)
+const x = ref(0)
+const y = ref(0)
+
+/**
+ * Place the highlight over the element.
+ *
+ * The overlay is positioned absolutely in the document, while
+ * getBoundingClientRect() is relative to the viewport, so the scroll offset
+ * is added. Measured again when the viewport size changes, as the layout
+ * may have changed with it.
+ */
+function measure() {
+  const rect = props.element.getBoundingClientRect()
+  width.value = rect.width
+  height.value = rect.height
+  x.value = rect.x + window.scrollX
+  y.value = rect.y + window.scrollY
+}
+
+measure()
+watch(() => props.viewportSize, measure)
 
 const style = computed(() => {
   return {

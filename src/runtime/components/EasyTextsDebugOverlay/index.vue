@@ -24,7 +24,7 @@
         <div class="nuxt-easy-texts-selection-inner">
           <button
             type="button"
-            :class="editButtonClass"
+            :class="cancelButtonClass"
             @click.prevent="disableDebug"
           >
             {{ cancelButtonLabel }}
@@ -32,7 +32,7 @@
           <button
             type="submit"
             :disabled="!selectedIndices.length"
-            :class="cancelButtonClass"
+            :class="editButtonClass"
           >
             {{ editButtonLabel }}
           </button>
@@ -50,7 +50,11 @@ import {
   useEasyTexts,
   onBeforeUnmount,
 } from '#imports'
-import { DEBUG_END, DEBUG_START } from '../../helpers/debug'
+import {
+  DEBUG_END,
+  DEBUG_START,
+  decodeInvisibleKeys,
+} from '../../helpers/debug'
 import Match from './Match.vue'
 
 type DebugMatch = {
@@ -146,8 +150,10 @@ function onSubmit() {
 function findNodes(): DebugMatch[] {
   const matches: DebugMatch[] = []
 
-  // Find DOM nodes containing the encoded characters as text content.
-  const textXpath = `//*[contains(text(), '${DEBUG_START}') and contains(substring-after(text(), '${DEBUG_START}'), '${DEBUG_END}')]`
+  // Find DOM nodes containing the encoded characters as text content. Any of
+  // an element's text nodes may hold a key: contains(text(), ...) would only
+  // test the first one, so a key after e.g. a <b> would be missed.
+  const textXpath = `//*[text()[contains(., '${DEBUG_START}') and contains(substring-after(., '${DEBUG_START}'), '${DEBUG_END}')]]`
   findNodesWithXPath(textXpath, matches, 'text')
 
   // Find DOM nodes containing attributes with the encoded characters.
@@ -169,7 +175,7 @@ function handleNode(
     searchType === 'text'
       ? Array.from(node.childNodes)
           .filter((n): n is Text => n.nodeType === Node.TEXT_NODE)
-          .flatMap((textNode) => extractKeys(textNode.nodeValue ?? ''))
+          .flatMap((textNode) => decodeInvisibleKeys(textNode.nodeValue ?? ''))
       : extractKeysFromAttributes(node)
 
   if (keys.length) {
@@ -217,39 +223,9 @@ function extractKeysFromAttributes(element: HTMLElement): string[] {
   for (let i = 0; i < element.attributes.length; i++) {
     const attr = element.attributes[i]
     if (attr?.value && attr.value.includes(DEBUG_START)) {
-      const attrKeys = extractKeys(attr.value)
+      const attrKeys = decodeInvisibleKeys(attr.value)
       keys.push(...attrKeys)
     }
-  }
-
-  return keys
-}
-
-/**
- * Extract the encoded keys from the given string.
- */
-function extractKeys(text: string): string[] {
-  const keys = []
-  let index = 0
-
-  while (index < text.length) {
-    const start = text.indexOf(DEBUG_START, index)
-    const end = text.indexOf(DEBUG_END, start + 1)
-    if (start === -1 || end === -1 || end <= start) break
-
-    const encoded = text
-      .slice(start + 1, end)
-      .replace(/\u200B/g, '0')
-      .replace(/\u200C/g, '1')
-
-    const bytes = []
-    for (let i = 0; i < encoded.length; i += 8) {
-      bytes.push(parseInt(encoded.slice(i, i + 8), 2))
-    }
-
-    const key = new TextDecoder().decode(new Uint8Array(bytes))
-    keys.push(key)
-    index = end + 1
   }
 
   return keys

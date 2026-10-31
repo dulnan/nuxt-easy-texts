@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   DEBUG_START,
   DEBUG_END,
+  decodeInvisibleKeys,
   encodeKeyToInvisible,
   toDebug,
 } from '../../src/runtime/helpers/debug'
@@ -62,12 +63,11 @@ describe('debug helpers', () => {
       expect(encoded.length).toBe(64)
     })
 
-    it('encodes unicode characters', () => {
-      // Note: This only works for characters in the first 256 code points
-      // because we're using 8 bits per character
+    it('encodes unicode characters as their UTF-8 bytes', () => {
+      // 'é' is U+00E9, which UTF-8 encodes as the two bytes C3 A9.
       const result = encodeKeyToInvisible('é')
-      const encoded = result.slice(1, -1)
-      expect(encoded.length).toBe(8)
+      const bits = result.slice(1, -1).replace(/​/g, '0').replace(/‌/g, '1')
+      expect(bits).toBe('11000011' + '10101001')
     })
 
     it('produces different output for different keys', () => {
@@ -95,6 +95,27 @@ describe('debug helpers', () => {
       // 1 -> U+200C (zero-width non-joiner)
       const expected = '\u200B\u200C\u200B\u200B\u200B\u200B\u200B\u200C'
       expect(encoded).toBe(expected)
+    })
+  })
+
+  describe('decodeInvisibleKeys', () => {
+    it.each([
+      'cart.title',
+      'größe.label',
+      'preis.€',
+      'emoji.🎉',
+      'Ünïcödé key with spaces',
+    ])('decodes the encoded key %j unchanged', (key) => {
+      expect(decodeInvisibleKeys(encodeKeyToInvisible(key))).toEqual([key])
+    })
+
+    it('decodes every key in a text, in order', () => {
+      const text = `${encodeKeyToInvisible('a.ä')}Größe: ${encodeKeyToInvisible('b.€')}10 €`
+      expect(decodeInvisibleKeys(text)).toEqual(['a.ä', 'b.€'])
+    })
+
+    it('returns no keys for a text without encoded keys', () => {
+      expect(decodeInvisibleKeys('Plain text')).toEqual([])
     })
   })
 
