@@ -1,15 +1,10 @@
 import withNuxt from './playground/.nuxt/eslint.config.mjs'
-import prettier from 'eslint-plugin-prettier'
 import eslintConfigPrettier from 'eslint-config-prettier'
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 
 export default withNuxt({
-  plugins: {
-    prettier,
-  },
   rules: {
+    // Formatting is handled by oxfmt; turn off rules that would conflict.
     ...eslintConfigPrettier.rules,
-    ...eslintPluginPrettierRecommended.rules,
   },
 })
   .override('nuxt/typescript/rules', {

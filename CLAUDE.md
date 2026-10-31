@@ -22,8 +22,8 @@ npm run dev:start        # Start built playground server
 npm run lint             # Lint src/ with ESLint
 npm run lint:fix         # Lint and auto-fix
 npm run typecheck        # Type check module and playground
-npm run prettier         # Check formatting
-npm run prettier:fix     # Auto-format
+npm run format           # Check formatting (oxfmt)
+npm run format:fix       # Auto-format (oxfmt)
 
 # Build
 npm run prepack          # Build module for distribution

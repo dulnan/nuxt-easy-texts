@@ -40,8 +40,8 @@
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "prettier": "prettier --check .",
-    "prettier:fix": "prettier --write ."
+    "format": "oxfmt --check",
+    "format:fix": "oxfmt"
   },
   "publishConfig": {
     "access": "public"
@@ -69,11 +69,10 @@
     "@vue/test-utils": "^2.5.1",
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.7",
     "happy-dom": "^21.0.4",
     "nuxt": "^4.6.3",
+    "oxfmt": "^0.75.0",
     "playwright-core": "^1.64.1",
-    "prettier": "^3.9.10",
     "vitest": "^5.0.5",
     "vue-tsc": "^3.3.14"
   },

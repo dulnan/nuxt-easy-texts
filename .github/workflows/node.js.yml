@@ -51,9 +51,9 @@ jobs:
         run: |
           npm run lint
 
-      - name: Prettier
+      - name: Format
         run: |
-          npm run prettier
+          npm run format
 
       - name: Vitest
         run: |
