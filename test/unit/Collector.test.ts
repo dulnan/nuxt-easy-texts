@@ -931,6 +931,41 @@ describe('Collector', () => {
     })
   })
 
+  describe('error log', () => {
+    it('shows three lines around the line of the call', async () => {
+      const fileContents = Array.from(
+        { length: 10 },
+        (_, i) => `line ${i + 1}`,
+      ).join('\n')
+      // The call starts at the first character of line 6.
+      const start = fileContents.indexOf('line 6')
+      const helper = createMockHelper({
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
+      })
+      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(
+        createMockCollectedFile({
+          filePath: '/path/to/file.vue',
+          fileContents,
+          errors: [
+            {
+              message: 'Broken call',
+              filePath: '/path/to/file.vue',
+              call: { code: 'line 6', start, end: start + 6 },
+            },
+          ],
+        }) as any,
+      )
+
+      await expect(new Collector(helper).init()).rejects.toThrow()
+
+      const box: string = mockLoggerBox.mock.calls[0]![0]
+      const shownLines = [...box.matchAll(/^\s*(\d+) \|/gm)].map((m) =>
+        Number(m[1]),
+      )
+      expect(shownLines).toEqual([3, 4, 5, 6, 7, 8, 9])
+    })
+  })
+
   describe('hasKey', () => {
     it('knows the keys from scanned files and globalTexts', async () => {
       const helper = createMockHelper({

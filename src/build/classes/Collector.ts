@@ -279,21 +279,13 @@ export class Collector {
         const fileContents = this.files.get(error.filePath)?.fileContents
 
         if (fileContents) {
-          // Find the line numbers.
           const lines = fileContents.split('\n')
-          let lineNumber = 1
-          let currentPos = 0
-          let startLine = 0
 
-          // Find which line contains the start position.
-          for (const line of lines) {
-            currentPos += line.length + 1 // +1 for the newline character
-            if (currentPos >= error.call.start) {
-              startLine = lineNumber
-              break
-            }
-            lineNumber++
-          }
+          // The 1-based number of the line that contains the start position:
+          // one more than the line breaks before it.
+          const startLine = fileContents
+            .slice(0, error.call.start)
+            .split('\n').length
 
           // Get context: 3 lines before and 3 lines after
           const contextStart = Math.max(startLine - 3, 1)
