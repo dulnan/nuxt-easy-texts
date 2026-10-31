@@ -345,13 +345,16 @@ export default defineNuxtConfig({
   modules: ['nuxt-easy-texts'],
 
   easyTexts: {
-    // Define which files to include.
+    // Define which files to include. These are the defaults.
+    // Patterns starting with ~ or @ are resolved for every layer, patterns
+    // starting with . are relative to the root dir. Prefix a pattern with ! to
+    // exclude files, e.g. '!~/components/stories/**'.
     pattern: [
-      './components/**/*.{js,ts,vue}',
-      './layouts/**/*.{js,ts,vue}',
-      './layers/**/*.{js,ts,vue}',
-      './pages/**/*.{js,ts,vue}',
-      './composables/**/*.{js,ts,vue}',
+      '~/components/**/*.{js,ts,vue}',
+      '~/layouts/**/*.{js,ts,vue}',
+      '~/layers/**/*.{js,ts,vue}',
+      '~/pages/**/*.{js,ts,vue}',
+      '~/composables/**/*.{js,ts,vue}',
     ],
 
     // Define what and where to generate extractions.

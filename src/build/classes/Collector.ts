@@ -441,9 +441,11 @@ export class Collector {
   }
 
   private handleUnlinkDir(folderPath: string): boolean {
+    // With the trailing slash, removing "card" leaves "cards" alone.
+    const prefix = folderPath.endsWith('/') ? folderPath : folderPath + '/'
     let anyHasChanged = false
     for (const filePath of [...this.files.keys()]) {
-      if (filePath.startsWith(folderPath)) {
+      if (filePath.startsWith(prefix)) {
         const hasChanged = this.handleUnlink(filePath)
         if (hasChanged) {
           anyHasChanged = true

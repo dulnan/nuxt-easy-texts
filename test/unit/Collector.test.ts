@@ -558,6 +558,35 @@ describe('Collector', () => {
         expect(otherResult.hasChanged).toBe(true)
       })
 
+      it('keeps files of a sibling directory whose name starts the same', async () => {
+        const helper = createMockHelper({
+          getImportPatternFiles: async () => ['/path/to/cards/file.vue'],
+        })
+        vi.mocked(CollectedFile.fromFilePath).mockImplementation(
+          async (_, path) =>
+            createMockCollectedFile({
+              filePath: path,
+              fileContents: '$texts("key", "value")',
+            }) as any,
+        )
+
+        const collector = new Collector(helper)
+        await collector.init()
+
+        const result = await collector.handleWatchEvent(
+          'unlinkDir',
+          '/path/to/card',
+        )
+        expect(result.hasChanged).toBe(false)
+
+        // The file is still collected, so removing it is a change.
+        const fileResult = await collector.handleWatchEvent(
+          'unlink',
+          '/path/to/cards/file.vue',
+        )
+        expect(fileResult.hasChanged).toBe(true)
+      })
+
       it('returns false when no files in directory', async () => {
         const helper = createMockHelper()
 

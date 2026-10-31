@@ -145,10 +145,14 @@ export class ModuleHelper {
     const srcResolver = createResolver(nuxt.options.srcDir)
     const rootResolver = createResolver(nuxt.options.rootDir)
 
-    this.options.pattern = this.options.pattern.flatMap((pattern) => {
-      if (pattern.startsWith('!') || pattern.startsWith('/')) {
-        // Skip resolving for ignore patterns or absolute paths.
-        return pattern
+    const resolvePattern = (pattern: string): string[] => {
+      if (pattern.startsWith('!')) {
+        // An ignore pattern is resolved like any other, so that it applies to
+        // the same absolute paths as the patterns it excludes from.
+        return resolvePattern(pattern.slice(1)).map((v) => '!' + v)
+      } else if (pattern.startsWith('/')) {
+        // Skip resolving for absolute paths.
+        return [pattern]
       } else if (pattern.startsWith('~') || pattern.startsWith('@')) {
         // Any of the internal Nuxt aliases need to be resolved for each layer.
         // @see https://nuxt.com/docs/api/nuxt-config#alias
@@ -157,8 +161,10 @@ export class ModuleHelper {
 
       // The path starts with a dot, so we resolve it relative to the app root
       // directory, which is where the nuxt.config.ts file is located.
-      return rootResolver.resolve(pattern)
-    })
+      return [rootResolver.resolve(pattern)]
+    }
+
+    this.options.pattern = this.options.pattern.flatMap(resolvePattern)
 
     this.isDev = nuxt.options.dev
     this.resolvers = {
@@ -242,8 +248,12 @@ export class ModuleHelper {
   public matchesImportPattern(filePath: string): boolean {
     // Use micromatch to match using globs, but also check if the file path
     // exists as a literal string in the patterns array.
+    //
+    // Not micromatch.isMatch(): it is true if any single pattern matches, and
+    // an ignore pattern like "!/app/components/skip/**" matches every path
+    // outside that folder. micromatch() applies ignore patterns as exclusions.
     return (
-      micromatch.isMatch(filePath, this.options.pattern) ||
+      micromatch([filePath], this.options.pattern).length > 0 ||
       this.options.pattern.includes(filePath)
     )
   }
