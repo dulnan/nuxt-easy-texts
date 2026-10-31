@@ -406,6 +406,9 @@ const cartCount = ref(2)
 $textsPlural('cartItems', cartCount.value, '1 items', '@count items')
 ```
 
+The singular text is used when the count is 1. `@count` is replaced with the
+count in both texts, so a translation may also use it in the singular text.
+
 #### isDebug: ComputeRef<boolean>
 
 Check if debug mode is enabled.
