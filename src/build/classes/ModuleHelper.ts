@@ -5,6 +5,7 @@ import {
   addTemplate,
   addTypeTemplate,
   createResolver,
+  getNitroVersion,
   resolveAlias,
   resolveFiles,
   addComponent,
@@ -18,6 +19,14 @@ import type { StaticTemplate } from '../templates/defineTemplate'
 import type { ModuleOptions } from './../types/options'
 
 type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] }
+
+/**
+ * The nitro config including `externals`, which only exists in Nitro 2
+ * (Nuxt < 5).
+ */
+type NitroConfigWithExternals = Nuxt['options']['nitro'] & {
+  externals?: { inline?: (string | RegExp)[] }
+}
 
 type RequiredModuleOptions = WithRequired<
   ModuleOptions,
@@ -264,10 +273,16 @@ export class ModuleHelper {
   }
 
   public applyBuildConfig() {
-    // Workaround for https://github.com/nuxt/nuxt/issues/28995
-    this.nuxt.options.nitro.externals ||= {}
-    this.nuxt.options.nitro.externals.inline ||= []
-    this.nuxt.options.nitro.externals.inline.push(...this.nitroExternals)
+    // Workaround for https://github.com/nuxt/nuxt/issues/28995, only applied
+    // with Nitro 2 (Nuxt < 5). Nitro 3 removed the `externals` option and
+    // warns when it is set, and the build works without it there.
+    const nitroMajor = getNitroVersion(this.nuxt)
+    if (nitroMajor === undefined || nitroMajor < 3) {
+      const nitro = this.nuxt.options.nitro as NitroConfigWithExternals
+      nitro.externals ||= {}
+      nitro.externals.inline ||= []
+      nitro.externals.inline.push(...this.nitroExternals)
+    }
 
     // Currently needed due to a bug in Nuxt that does not add aliases for
     // nitro. As this has happened before in the past, let's leave it so that
