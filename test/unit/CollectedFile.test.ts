@@ -297,6 +297,43 @@ describe('CollectedFile', () => {
       })
     })
 
+    it('resolves escapes in template literals like in string literals', () => {
+      // The source holds the escapes \u20AC, \' \` and \n, and a line
+      // continuation (a backslash before a line break), which produces
+      // nothing.
+      const source =
+        "$texts('price', `Price \\u20AC, it\\'s \\`quoted\\`\\nnext`)\n" +
+        "$textsPlural('items', n, `One \\u20AC`, `@count \\\nitems`)"
+      const file = new CollectedFile(cache, '/path/to/file.vue', source)
+
+      expect(file.errors).toEqual([])
+      expect(file.extractions).toEqual([
+        expect.objectContaining({
+          fullKey: 'price',
+          defaultText: "Price €, it's `quoted`\nnext",
+        }),
+        expect.objectContaining({
+          fullKey: 'items',
+          singular: 'One €',
+          plural: '@count items',
+        }),
+      ])
+    })
+
+    it('extracts the same text from a string and a template literal', () => {
+      // Otherwise the collector reports different default texts for one key.
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        "$texts('a', 'Price \\u20AC')\n$texts('a', `Price \\u20AC`)",
+      )
+
+      const [fromString, fromTemplate] = file.extractions
+      expect(fromTemplate!.type === 'text' && fromTemplate!.defaultText).toBe(
+        fromString!.type === 'text' && fromString!.defaultText,
+      )
+    })
+
     it('handleError captures error message', () => {
       const file = new CollectedFile(cache, '/path/to/file.vue', '')
       const call = { code: '$texts(invalid)', start: 0, end: 15 }

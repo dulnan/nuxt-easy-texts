@@ -68,7 +68,11 @@ export function extractLiteral(
         `Interpolated template literals can't be used for the "${argument}" argument, only the text before the first placeholder would be extracted. Use a static string and pass dynamic values via the replacements argument.`,
       )
     }
-    return literal.quasis[0]?.value.raw
+    // The cooked value is the string the code produces, with escapes like
+    // € or \` resolved, as for a string literal's value. The raw value is
+    // the source text. Cooked is only null for invalid escapes, which are a
+    // syntax error outside of tagged templates.
+    return literal.quasis[0]?.value.cooked ?? undefined
   }
   if (throwError) {
     if (literal) {
