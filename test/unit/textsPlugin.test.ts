@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, computed } from 'vue'
 import textsPlugin from '../../src/runtime/plugins/texts'
 
@@ -51,9 +51,12 @@ let watchCallback: ((newValue: string) => void) | null = null
 let hotReloadCallback: (() => void) | null = null
 
 // Mock the loader
-const mockLoad = vi.fn(async (language: string) => {
+const defaultLoad = async (
+  language: string,
+): Promise<Record<string, string | string[]>> => {
   return mockLoadedTexts[language as keyof typeof mockLoadedTexts] || {}
-})
+}
+const mockLoad = vi.fn(defaultLoad)
 
 vi.mock('#nuxt-easy-texts/loader', () => ({
   easyTextsLoader: {
@@ -295,6 +298,66 @@ describe('texts plugin', () => {
       // The actual watch behavior is tested via E2E tests
       expect(true).toBe(true)
     })
+  })
+})
+
+// The language often comes from the URL (e.g. a /[language]/ route param), so
+// it can be any string, including names that exist on Object.prototype. The
+// loaded translations must be cached per language without such a name
+// resolving to an inherited value or replacing the cache's prototype.
+describe('texts plugin with languages named like Object.prototype properties', () => {
+  const languages = ['constructor', 'toString', 'hasOwnProperty', '__proto__']
+
+  beforeEach(() => {
+    Object.keys(stateStore).forEach((key) => delete stateStore[key])
+    mockCurrentLanguage.value = 'en'
+    mockLoad.mockClear()
+    mockLoad.mockImplementation(async (language: string) => ({
+      'hello.world': `Hello (${language})`,
+    }))
+  })
+
+  afterEach(() => {
+    mockLoad.mockImplementation(defaultLoad)
+  })
+
+  it.each(languages)('loads and renders texts for "%s"', async (language) => {
+    mockCurrentLanguage.value = language
+    const result = await callSetup()
+
+    expect(mockLoad).toHaveBeenCalledWith(language)
+    expect(result.provide.texts('hello.world')).toBe(`Hello (${language})`)
+  })
+
+  it.each(languages)(
+    'loadTranslationsForLanguage loads and caches "%s"',
+    async (language) => {
+      const result = await callSetup()
+      const { loadTranslationsForLanguage } = result.provide.nuxtEasyTexts
+
+      mockLoad.mockClear()
+      expect(await loadTranslationsForLanguage(language)).toEqual({
+        'hello.world': `Hello (${language})`,
+      })
+      expect(mockLoad).toHaveBeenCalledWith(language)
+
+      mockLoad.mockClear()
+      await loadTranslationsForLanguage(language)
+      expect(mockLoad).not.toHaveBeenCalled()
+    },
+  )
+
+  it('keeps loading other languages normally after loading "__proto__"', async () => {
+    const result = await callSetup()
+    const { loadTranslationsForLanguage } = result.provide.nuxtEasyTexts
+
+    await loadTranslationsForLanguage('__proto__')
+    mockLoad.mockClear()
+
+    expect(await loadTranslationsForLanguage('fr')).toEqual({
+      'hello.world': 'Hello (fr)',
+    })
+    expect(mockLoad).toHaveBeenCalledWith('fr')
   })
 })
 

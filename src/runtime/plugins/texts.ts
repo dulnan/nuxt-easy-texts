@@ -39,16 +39,21 @@ export default defineNuxtPlugin<EasyTextsProvide>({
 
     const isDebug = useState<boolean>(DEBUG_ENABLED, () => false)
 
-    const translations = useState<Record<string, TextsState>>(
-      'nuxt_easy_texts',
-      () => {
-        return {}
-      },
+    // The loaded translations, keyed by language. A Map rather than a plain
+    // object, because the language can come from the URL: on a plain object,
+    // names like "constructor" resolve to inherited values and assigning to
+    // "__proto__" replaces the object's prototype. Nuxt's payload serializes
+    // Maps. The state key differs from the one used when this was an object,
+    // so a payload rendered by an older version is not read as a Map.
+    const translations = useState<Map<string, TextsState>>(
+      'nuxt_easy_texts_translations',
+      () => new Map(),
     )
 
-    if (!translations.value[currentLanguage.value]) {
-      translations.value[currentLanguage.value] = await loader.load(
+    if (!translations.value.get(currentLanguage.value)) {
+      translations.value.set(
         currentLanguage.value,
+        await loader.load(currentLanguage.value),
       )
     }
 
@@ -56,12 +61,13 @@ export default defineNuxtPlugin<EasyTextsProvide>({
       language: string,
       force?: boolean,
     ): Promise<TextsState> {
-      if (translations.value[language] && !force) {
-        return translations.value[language]
+      const cached = translations.value.get(language)
+      if (cached && !force) {
+        return cached
       }
 
       const data = await loader.load(language)
-      translations.value[language] = data
+      translations.value.set(language, data)
       return data
     }
 
@@ -78,7 +84,7 @@ export default defineNuxtPlugin<EasyTextsProvide>({
     }
 
     const currentTranslations = computed<TextsState>(() => {
-      return translations.value[currentLanguage.value] || {}
+      return translations.value.get(currentLanguage.value) || {}
     })
     // The vite plugin runs only on production builds, so the runtime receives
     // two different call shapes:
