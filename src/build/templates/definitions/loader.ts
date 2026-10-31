@@ -9,12 +9,12 @@ export default defineStaticTemplate(
     const pathRelative = helper.toModuleBuildRelative(
       helper.paths.easyTextsLoader,
     )
-    return `import easyTextsLoader from '${pathRelative}'
+    return `import easyTextsLoader from ${JSON.stringify(pathRelative)}
 export { easyTextsLoader }
 `
   },
   (helper) => {
-    return `import type { EasyTextsLoader } from '${helper.paths.runtimeTypes}'
+    return `import type { EasyTextsLoader } from ${JSON.stringify(helper.paths.runtimeTypes)}
 
 declare module '#nuxt-easy-texts/loader' {
   /**

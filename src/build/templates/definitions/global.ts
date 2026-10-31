@@ -9,7 +9,7 @@ export default defineStaticTemplate(
     return 'export {}'
   },
   (helper) => {
-    return `import type { EasyTextsFunctions, NuxtEasyTextsApp } from '${helper.paths.runtimeTypes}'
+    return `import type { EasyTextsFunctions, NuxtEasyTextsApp } from ${JSON.stringify(helper.paths.runtimeTypes)}
 
 // Both blocks below are intentional and augment the same interface: 'vue'
 // re-exports '@vue/runtime-core', so on a clean dependency tree either one on

@@ -5,13 +5,10 @@ export default defineCollectorTemplate(
     path: 'nuxt-easy-texts/keys',
     virtual: true,
   },
+  // Keys and texts come from string literals in the app's code and can contain
+  // any character, so they are always embedded with JSON.stringify.
   (extractions) => {
-    const keys = extractions
-      .map((v) => v.fullKey)
-      .map((key) => {
-        return `"${key}"`
-      })
-      .join(',\n  ')
+    const keys = extractions.map((v) => JSON.stringify(v.fullKey)).join(',\n  ')
     return `
 export const KEYS = [
   ${keys}
@@ -24,7 +21,7 @@ export const KEYS = [
         if (extraction.type === 'text') {
           if (extraction.defaultText) {
             acc[extraction.fullKey] =
-              `"${extraction.fullKey}": ${JSON.stringify(extraction.defaultText)}`
+              `${JSON.stringify(extraction.fullKey)}: ${JSON.stringify(extraction.defaultText)}`
           }
         }
         return acc
@@ -37,7 +34,7 @@ export const KEYS = [
         if (extraction.type === 'plural') {
           if (extraction.singular) {
             acc[extraction.fullKey] =
-              `"${extraction.fullKey}": [${JSON.stringify(extraction.singular)}, ${JSON.stringify(extraction.plural)}]`
+              `${JSON.stringify(extraction.fullKey)}: [${JSON.stringify(extraction.singular)}, ${JSON.stringify(extraction.plural)}]`
           }
         }
         return acc
