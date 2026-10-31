@@ -10,3 +10,4 @@ playground/fragment.easyTexts.graphql
 playground/texts.json
 playground/texts.txt
 coverage
+.tmp
