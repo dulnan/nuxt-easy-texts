@@ -1,12 +1,14 @@
 import { defineBuildConfig } from 'unbuild'
 
 export default defineBuildConfig({
-  entries: ['./src/loader.ts', './src/drupal.ts'],
+  entries: ['./src/loader.ts', './src/drupal.ts', './src/cli.ts'],
   externals: [
     'pathe',
     'magic-string',
     'micromatch',
     'acorn',
+    'devalue',
+    'vue/compiler-sfc',
     'unplugin',
     'picomatch',
     '#imports',

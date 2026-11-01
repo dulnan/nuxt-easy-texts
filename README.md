@@ -155,6 +155,53 @@ plugin. Therefore, they can't use the usual provide/inject mechanism. Using
 `useEasyTexts()` will return **different** `$texts` and `$textsPlural`
 implementations that use overrides if available.
 
+### Merge the live texts into the code
+
+Over time, the texts editors change in production drift away from the default
+texts in your code. `nuxt easy-texts merge` replaces the default texts in your
+code with the texts of a running app:
+
+```bash
+npx nuxt easy-texts merge https://www.example.com/en
+```
+
+The texts are read from the payload of the rendered page, so this works with any
+loader. Pass a page in the language of your default texts. Server-side rendering
+must be enabled. The page may still run an older version of nuxt-easy-texts,
+from 2.1.0 on, so you can merge before deploying the update. If loading the
+texts failed and the page shows the
+[default texts](#fallback-to-the-default-texts) instead, the command refuses to
+merge.
+
+Instead of a URL, you can pass a JSON file with the texts, keyed by full key, in
+the shape `load()` returns them:
+
+```bash
+npx nuxt easy-texts merge texts.en.json
+```
+
+Run the command in the app directory, or pass `--cwd <dir>` after the command
+name. A relative file path is resolved against the app directory.
+
+Only string and template literals in the default text positions are replaced.
+Calls without a default text and `globalTexts` in `nuxt.config.ts` are left
+alone, and the command lists the keys it didn't update. Files in `node_modules`,
+e.g. of installed layers, are never changed. The code isn't reformatted, so run
+your formatter afterwards.
+
+In a `.vue` file, a character that would end the surrounding syntax is written
+as a `\x` escape: a quote that would end a template attribute like
+`:title="$texts('key', 'Text')"`, the second `}` of a `}}` inside `{{ }}`, and
+the `/` of a `</script` inside `<script>`.
+
+| Option                   | Description                                                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--language <code>`      | The language to read, if the page loaded several.                                                                                                            |
+| `--auth <user:password>` | Basic auth credentials, e.g. for a protected test environment. Defaults to the `NUXT_EASY_TEXTS_AUTH` environment variable, also from the app's `.env` file. |
+| `--dry-run`              | Show the changes without writing them.                                                                                                                       |
+
+`nuxt` answers `--help` itself, so use `nuxt easy-texts help` for the usage.
+
 ## How it works
 
 nuxt-easy-texts searches your Vue components and JS/TS files for all calls to

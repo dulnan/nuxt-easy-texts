@@ -1,6 +1,10 @@
 import { computed, defineNuxtPlugin, useState, watch } from '#imports'
 import { easyTextsLoader } from '#nuxt-easy-texts/loader'
-import { DEBUG_ENABLED } from '../helpers/constants'
+import {
+  DEBUG_ENABLED,
+  FALLBACK_STATE,
+  TRANSLATIONS_STATE,
+} from '../helpers/constants'
 import { getPluralTexts, getSingleText } from '../helpers/textsFunctions'
 import type {
   EasyTextsFunctions,
@@ -46,9 +50,13 @@ export default defineNuxtPlugin<EasyTextsProvide>({
     // Maps. The state key differs from the one used when this was an object,
     // so a payload rendered by an older version is not read as a Map.
     const translations = useState<Map<string, TextsState>>(
-      'nuxt_easy_texts_translations',
+      TRANSLATIONS_STATE,
       () => new Map(),
     )
+
+    // The languages that use the default texts. Part of the payload, so that
+    // `nuxt easy-texts merge` doesn't read the default texts as live texts.
+    const fallbackLanguages = useState<string[]>(FALLBACK_STATE, () => [])
 
     /**
      * Loads the texts with the loader. If that fails, e.g. because the backend
@@ -60,13 +68,22 @@ export default defineNuxtPlugin<EasyTextsProvide>({
      */
     async function loadTexts(language: string): Promise<TextsState> {
       try {
-        return await loader.load(language)
+        const texts = await loader.load(language)
+        if (fallbackLanguages.value.includes(language)) {
+          fallbackLanguages.value = fallbackLanguages.value.filter(
+            (v) => v !== language,
+          )
+        }
+        return texts
       } catch (error) {
         console.error(
           `[nuxt-easy-texts] Loading the texts for language "${language}" failed, using the default texts instead.`,
           error,
         )
         const { default: defaults } = await import('#nuxt-easy-texts/defaults')
+        if (!fallbackLanguages.value.includes(language)) {
+          fallbackLanguages.value = [...fallbackLanguages.value, language]
+        }
         return defaults
       }
     }

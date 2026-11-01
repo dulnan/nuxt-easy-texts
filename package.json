@@ -16,6 +16,9 @@
     "./drupal": "./dist/drupal.mjs"
   },
   "main": "./dist/module.mjs",
+  "bin": {
+    "nuxt-easy-texts": "./dist/cli.mjs"
+  },
   "typesVersions": {
     "*": {
       ".": [
@@ -63,11 +66,15 @@
     "@nuxt/kit": "^4.6.3",
     "acorn": "^8.19.0",
     "astring": "^1.9.0",
+    "devalue": "^6.0.3",
     "magic-string": "^1.4.5",
     "micromatch": "^4.0.8",
     "pathe": "^2.0.3",
     "picocolors": "^1.1.1",
     "unplugin": "^3.7.0"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.17.0",

@@ -70,6 +70,10 @@ vi.mock('#nuxt-easy-texts/loader', () => ({
   },
 }))
 
+vi.mock('#nuxt-easy-texts/defaults', () => ({
+  default: { 'hello.world': 'Default hello' },
+}))
+
 vi.mock('#nuxt-easy-texts/settings', () => ({
   advancedDebugEnabled: false,
 }))
@@ -358,6 +362,53 @@ describe('texts plugin with languages named like Object.prototype properties', (
       'hello.world': 'Hello (fr)',
     })
     expect(mockLoad).toHaveBeenCalledWith('fr')
+  })
+})
+
+// The languages that fell back to the default texts are part of the payload,
+// so that `nuxt easy-texts merge` doesn't read the default texts as live
+// texts.
+describe('texts plugin when loading the texts fails', () => {
+  beforeEach(() => {
+    Object.keys(stateStore).forEach((key) => delete stateStore[key])
+    mockCurrentLanguage.value = 'en'
+    mockLoad.mockClear()
+    mockLoad.mockImplementation(async (language: string) => {
+      if (language === 'fr') {
+        throw new Error('Unavailable')
+      }
+      return defaultLoad(language)
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    mockLoad.mockImplementation(defaultLoad)
+    vi.restoreAllMocks()
+  })
+
+  it('records the languages that use the default texts', async () => {
+    mockCurrentLanguage.value = 'fr'
+    const result = await callSetup()
+
+    expect(result.provide.texts('hello.world')).toBe('Default hello')
+    expect(stateStore.nuxt_easy_texts_fallback.value).toEqual(['fr'])
+  })
+
+  it('removes a language once its texts load', async () => {
+    mockCurrentLanguage.value = 'fr'
+    const result = await callSetup()
+    mockLoad.mockImplementation(defaultLoad)
+
+    await result.provide.nuxtEasyTexts.loadTranslationsForLanguage('fr', true)
+
+    expect(stateStore.nuxt_easy_texts_fallback.value).toEqual([])
+  })
+
+  it('records nothing when the texts load', async () => {
+    await callSetup()
+
+    expect(stateStore.nuxt_easy_texts_fallback.value).toEqual([])
   })
 })
 
