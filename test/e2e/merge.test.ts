@@ -1,5 +1,5 @@
-import { cp, readFile, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import { setup, url } from '@nuxt/test-utils/e2e'
@@ -32,20 +32,22 @@ async function run(args: string[]) {
   }
 }
 
+/**
+ * Copies the fixture's app and config to the copy directory.
+ */
+async function copyFixture() {
+  await rm(copyDir, { recursive: true, force: true })
+  await cp(join(fixtureDir, 'app'), join(copyDir, 'app'), { recursive: true })
+  await cp(join(fixtureDir, 'nuxt.config.ts'), join(copyDir, 'nuxt.config.ts'))
+}
+
 describe('nuxt easy-texts merge e2e', async () => {
   await setup({ rootDir: fixtureDir, build: true })
 
   afterAll(() => rm(copyDir, { recursive: true, force: true }))
 
   it('replaces the default texts with the texts of the rendered page', async () => {
-    await rm(copyDir, { recursive: true, force: true })
-    await cp(join(fixtureDir, 'app'), join(copyDir, 'app'), {
-      recursive: true,
-    })
-    await cp(
-      join(fixtureDir, 'nuxt.config.ts'),
-      join(copyDir, 'nuxt.config.ts'),
-    )
+    await copyFixture()
 
     const merged = await run(['merge', url('/')])
     const page = await readFile(join(copyDir, 'app/pages/index.vue'), 'utf8')
@@ -57,5 +59,43 @@ describe('nuxt easy-texts merge e2e', async () => {
       `$textsPlural('plural.key', 2, '[LOADED] One item', '[LOADED] @count items')`,
     )
     expect(again.output).toContain('0 default texts would change')
+  })
+
+  it('refuses a page that rendered the default texts', async () => {
+    await copyFixture()
+    const before = await readFile(join(copyDir, 'app/pages/index.vue'), 'utf8')
+
+    const merged = await run(['merge', url('/?language=unavailable')])
+    const after = await readFile(join(copyDir, 'app/pages/index.vue'), 'utf8')
+
+    expect(merged.exitCode).toBe(1)
+    expect(merged.output).toContain(
+      'The page rendered the default texts for "unavailable"',
+    )
+    expect(after).toBe(before)
+  })
+
+  it('leaves the files of a layer in node_modules alone', async () => {
+    await copyFixture()
+    const layerDir = join(copyDir, 'node_modules/installed-layer')
+    const layerPage = join(layerDir, 'app/pages/layer.vue')
+    const layerCode = `<template><p>{{ $texts('basic.key', 'Layer text') }}</p></template>\n`
+    await mkdir(dirname(layerPage), { recursive: true })
+    await writeFile(join(layerDir, 'nuxt.config.ts'), 'export default {}\n')
+    await writeFile(layerPage, layerCode)
+    const config = await readFile(join(copyDir, 'nuxt.config.ts'), 'utf8')
+    await writeFile(
+      join(copyDir, 'nuxt.config.ts'),
+      config.replace(
+        'ssr: true,',
+        `ssr: true,\n  extends: ['./node_modules/installed-layer'],`,
+      ),
+    )
+
+    const merged = await run(['merge', url('/')])
+
+    expect(merged.exitCode).toBe(0)
+    expect(merged.output).toContain('1 scanned files in node_modules')
+    expect(await readFile(layerPage, 'utf8')).toBe(layerCode)
   })
 })

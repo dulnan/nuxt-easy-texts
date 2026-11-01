@@ -11,7 +11,7 @@ import {
   vi,
 } from 'vitest'
 import { stringify } from 'devalue'
-import { runCli } from '../../src/build/merge/cli'
+import { isInstalledFile, runCli } from '../../src/build/merge/cli'
 import {
   getBasicAuthHeader,
   readTextsFromUrl,
@@ -23,6 +23,7 @@ const CREDENTIALS = 'editor:se:cret'
 
 /**
  * A page behind Basic auth, with texts in its payload like a Nuxt page.
+ * /fallback renders the default texts instead.
  */
 const server = createServer((request, response) => {
   if (request.headers.authorization !== getBasicAuthHeader(CREDENTIALS)) {
@@ -34,6 +35,8 @@ const server = createServer((request, response) => {
       $snuxt_easy_texts_translations: new Map([
         ['en', { 'basic.key': 'Text from the protected page' }],
       ]),
+      // As if loading the texts failed for /fallback.
+      $snuxt_easy_texts_fallback: request.url === '/fallback' ? ['en'] : [],
     },
   })
   response
@@ -108,6 +111,14 @@ describe('readTextsFromUrl', () => {
     ).rejects.toThrow('rejected the credentials (status 401).')
   })
 
+  it('refuses a page that rendered the default texts', async () => {
+    await expect(
+      readTextsFromUrl(pageUrl + 'fallback', { auth: CREDENTIALS }),
+    ).rejects.toThrow(
+      'The page rendered the default texts for "en", because loading the texts failed.',
+    )
+  })
+
   it('rejects credentials in the URL', async () => {
     const withCredentials = pageUrl.replace('://', '://editor:secret@')
 
@@ -135,6 +146,22 @@ describe('runCli', () => {
     expect(exitCode).toBe(1)
     expect(output).toContain(message)
     expect(output).toContain('Usage: nuxt easy-texts merge <url|file>')
+  })
+
+  it('prints why fetching the page failed', async () => {
+    // A port that nothing listens on anymore.
+    const closed = createServer()
+    await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve))
+    const { port } = closed.address() as AddressInfo
+    await new Promise((resolve) => closed.close(resolve))
+    const url = `http://127.0.0.1:${port}/`
+
+    const { exitCode, output } = await run(['merge', url, '--dry-run'])
+
+    expect(exitCode).toBe(1)
+    expect(output).toContain(
+      `Fetching ${url} failed. connect ECONNREFUSED 127.0.0.1:${port}`,
+    )
   })
 
   it('reads the credentials from --auth', async () => {
@@ -169,5 +196,17 @@ describe('runCli', () => {
     ])
 
     expect(exitCode).toBe(0)
+  })
+})
+
+describe('isInstalledFile', () => {
+  it.each([
+    ['/app/node_modules/my-layer/app/pages/index.vue', true],
+    ['/app/node_modules/.c12/github_org_layer/app/pages/index.vue', true],
+    ['C:\\app\\node_modules\\my-layer\\app\\pages\\index.vue', true],
+    ['/app/layers/base/app/pages/index.vue', false],
+    ['/app/app/components/node_modules_list.vue', false],
+  ])('%s: %s', (filePath, expected) => {
+    expect(isInstalledFile(filePath)).toBe(expected)
   })
 })

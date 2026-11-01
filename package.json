@@ -73,6 +73,9 @@
     "picocolors": "^1.1.1",
     "unplugin": "^3.7.0"
   },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
   "devDependencies": {
     "@nuxt/eslint": "^1.17.0",
     "@nuxt/module-builder": "^1.0.3",

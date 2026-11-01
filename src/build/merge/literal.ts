@@ -1,16 +1,35 @@
+import type { EscapeSequence } from './escapeRanges'
+
+/**
+ * Whether the character at the index is the one to escape in one of the
+ * sequences.
+ */
+function isInSequence(
+  text: string,
+  index: number,
+  sequences: EscapeSequence[],
+): boolean {
+  return sequences.some((sequence) => {
+    const start = index - sequence.index
+    return (
+      start >= 0 &&
+      text.slice(start, start + sequence.match.length).toLowerCase() ===
+        sequence.match
+    )
+  })
+}
+
 /**
  * Writes a text as a string literal with the given quote character, so that
  * parsing the literal returns the text again.
  *
- * The characters in hexChars are written as \x escapes. In a Vue template
- * attribute, e.g. :title="$texts('key', 'Text')", HTML ends the attribute at
- * the first quote that matches the attribute's quote, whatever JavaScript
- * escapes come before it. That quote is therefore written as \x22 or \x27.
+ * Characters in the given sequences are written as \x escapes, e.g. the "
+ * in a template attribute as \x22. See getEscapeRanges().
  */
 export function toStringLiteral(
   text: string,
   quote: string,
-  hexChars = '',
+  sequences: EscapeSequence[] = [],
 ): string {
   let result = ''
   for (let i = 0; i < text.length; i++) {
@@ -19,8 +38,8 @@ export function toStringLiteral(
       result += '\\\\'
     } else if (char === quote) {
       result += '\\' + quote
-    } else if (hexChars.includes(char)) {
-      result += '\\x' + char.charCodeAt(0).toString(16)
+    } else if (isInSequence(text, i, sequences)) {
+      result += '\\x' + char.charCodeAt(0).toString(16).padStart(2, '0')
     } else if (char === '\n') {
       result += '\\n'
     } else if (char === '\r') {

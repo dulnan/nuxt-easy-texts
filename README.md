@@ -167,7 +167,9 @@ npx nuxt easy-texts merge https://www.example.com/en
 
 The texts are read from the payload of the rendered page, so this works with any
 loader. Pass a page in the language of your default texts. Server-side rendering
-must be enabled.
+must be enabled. If loading the texts failed and the page shows the
+[default texts](#fallback-to-the-default-texts) instead, the command refuses to
+merge.
 
 Instead of a URL, you can pass a JSON file with the texts, keyed by full key, in
 the shape `load()` returns them:
@@ -176,20 +178,25 @@ the shape `load()` returns them:
 npx nuxt easy-texts merge texts.en.json
 ```
 
+Run the command in the app directory, or pass `--cwd <dir>` after the command
+name. A relative file path is resolved against the app directory.
+
 Only string and template literals in the default text positions are replaced.
 Calls without a default text and `globalTexts` in `nuxt.config.ts` are left
-alone, and the command lists the keys it didn't update. The code isn't
-reformatted, so run your formatter afterwards.
+alone, and the command lists the keys it didn't update. Files in `node_modules`,
+e.g. of installed layers, are never changed. The code isn't reformatted, so run
+your formatter afterwards.
 
-Inside a template attribute like `:title="$texts('key', 'Text')"`, a quote in a
-text that would end the attribute is written as `\x22` or `\x27`.
+In a `.vue` file, a character that would end the surrounding syntax is written
+as a `\x` escape: a quote that would end a template attribute like
+`:title="$texts('key', 'Text')"`, the second `}` of a `}}` inside `{{ }}`, and
+the `/` of a `</script` inside `<script>`.
 
 | Option                   | Description                                                                                                                                                  |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--language <code>`      | The language to read, if the page loaded several.                                                                                                            |
 | `--auth <user:password>` | Basic auth credentials, e.g. for a protected test environment. Defaults to the `NUXT_EASY_TEXTS_AUTH` environment variable, also from the app's `.env` file. |
 | `--dry-run`              | Show the changes without writing them.                                                                                                                       |
-| `--cwd <dir>`            | The directory of the Nuxt app. Put it after the command name.                                                                                                |
 
 `nuxt` answers `--help` itself, so use `nuxt easy-texts help` for the usage.
 

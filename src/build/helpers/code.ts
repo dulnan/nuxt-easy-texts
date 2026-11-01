@@ -12,6 +12,14 @@ import type { MethodCall } from '../types/extraction'
 export const SOURCE_FILE_REGEX = /\.(vue|[cm]?[jt]sx?)$/i
 
 /**
+ * The 1-based number of the line that contains the position: one more than
+ * the line breaks before it.
+ */
+export function getLineNumber(code: string, position: number): number {
+  return code.slice(0, position).split('\n').length
+}
+
+/**
  * Extract calls to the given method.
  *
  * The provided method should be the name of the method including the first

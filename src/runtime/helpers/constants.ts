@@ -10,6 +10,12 @@ export const DEBUG_ENABLED = 'nuxt_easy_texts_debug_enabled'
 export const TRANSLATIONS_STATE = 'nuxt_easy_texts_translations'
 
 /**
+ * The state key of the languages that use the default texts, because loading
+ * their texts failed. `nuxt easy-texts merge` refuses to merge them.
+ */
+export const FALLBACK_STATE = 'nuxt_easy_texts_fallback'
+
+/**
  * The provided texts overrides.
  */
 export const INJECT_OVERRIDE = Symbol(

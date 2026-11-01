@@ -6,6 +6,7 @@ import { extractMethodCalls } from '../../src/build/helpers/code'
 import { extractPlural, extractSingle } from '../../src/build/helpers/ast'
 import { mergeFile } from '../../src/build/merge/mergeFile'
 import {
+  getFallbackLanguages,
   getTextsFromPayload,
   parsePayload,
   pickLanguage,
@@ -91,6 +92,33 @@ describe('mergeFile', () => {
     ).toBeNull()
   })
 
+  it.each([["''"], ['``'], ['`${a}`'], ['null'], ['undefined']])(
+    'leaves a call alone whose default text the collector ignores: %s',
+    (defaultText) => {
+      const code = `$texts('title', ${defaultText})`
+
+      expect(mergeFile('file.ts', code, { title: 'New' }).code).toBeNull()
+    },
+  )
+
+  it('reports live texts with the wrong shape and leaves their calls alone', () => {
+    const code = [
+      `$textsPlural('numbers', n, 'One', 'Many')`,
+      `$textsPlural('single', n, 'One', 'Many')`,
+      `$texts('pair', 'Text')`,
+      `$texts('empty', 'Text')`,
+    ].join('\n')
+    const result = mergeFile('file.ts', code, {
+      numbers: [1, 2],
+      single: 'One',
+      pair: ['One', 'Many'],
+      empty: '',
+    })
+
+    expect(result.code).toBeNull()
+    expect(result.invalid).toEqual(['pair', 'empty', 'numbers', 'single'])
+  })
+
   it('does not read inherited properties as live texts', () => {
     const code = `$texts('constructor', 'Text')`
     const result = mergeFile('file.ts', code, {})
@@ -173,6 +201,50 @@ const title = $texts('title', 'Old')
     expect(compileErrors(result.code!)).toEqual([])
   })
 
+  it('escapes a }} inside an interpolation', () => {
+    const code = `<template><p>{{ $texts('title', 'Old') }}</p></template>`
+    const result = mergeFile('Component.vue', code, { title: 'Use {{name}}}' })
+
+    expect(result.code).toContain(`'Use {{name}\\x7d\\x7d'`)
+    expect(compileErrors(result.code!)).toEqual([])
+    expect(extract(result.code!)).toMatchObject([
+      { defaultText: 'Use {{name}}}' },
+    ])
+  })
+
+  it('writes a }} in an attribute as it is', () => {
+    const code = `<template><p :title="$texts('title', 'Old')" /></template>`
+    const result = mergeFile('Component.vue', code, { title: 'Use {{name}}' })
+
+    expect(result.code).toContain(`'Use {{name}}'`)
+    expect(compileErrors(result.code!)).toEqual([])
+  })
+
+  it('escapes a </script inside a script block, in any case', () => {
+    const code = `<script setup lang="ts">
+const title = $texts('title', 'Old')
+</script>
+<template><p /></template>
+`
+    const text = 'A </SCRIPT> and a </b>'
+    const result = mergeFile('Component.vue', code, { title: text })
+
+    expect(result.code).toContain(`'A <\\x2fSCRIPT> and a </b>'`)
+    expect(parseSfc(result.code!).errors).toEqual([])
+    expect(extract(result.code!)).toMatchObject([{ defaultText: text }])
+  })
+
+  it('merges a file whose template is in another file', () => {
+    const code = `<template src="./Component.html"></template>
+<script setup lang="ts">
+const title = $texts('title', 'Old')
+</script>
+`
+    const result = mergeFile('Component.vue', code, { title: 'New' })
+
+    expect(result.code).toContain(`$texts('title', 'New')`)
+  })
+
   it('escapes both quotes anywhere in a template in another language', () => {
     const code = `<template lang="pug">
 p {{ $texts('title', 'Old') }}
@@ -207,6 +279,20 @@ describe('reading the texts from a payload', () => {
     )
 
     expect(getTextsFromPayload(parsePayload(serialized))).toEqual(translations)
+  })
+
+  it('reads the languages that use the default texts', () => {
+    const payload = parsePayload(
+      stringify({
+        state: {
+          $snuxt_easy_texts_translations: translations,
+          $snuxt_easy_texts_fallback: ['de'],
+        },
+      }),
+    )
+
+    expect(getFallbackLanguages(payload)).toEqual(['de'])
+    expect(getFallbackLanguages({ state: {} })).toEqual([])
   })
 
   it('throws when the payload has no texts', () => {

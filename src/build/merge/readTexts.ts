@@ -1,6 +1,9 @@
 import { readFile } from 'node:fs/promises'
 import { parse } from 'devalue'
-import { TRANSLATIONS_STATE } from '../../runtime/helpers/constants'
+import {
+  FALLBACK_STATE,
+  TRANSLATIONS_STATE,
+} from '../../runtime/helpers/constants'
 import type { LiveTexts } from './mergeFile'
 
 /**
@@ -50,6 +53,18 @@ export function getTextsFromPayload(
     )
   }
   return translations
+}
+
+/**
+ * Returns the languages for which the page rendered the default texts,
+ * because loading the texts failed.
+ */
+export function getFallbackLanguages(
+  payload: Record<string, unknown>,
+): string[] {
+  const state = payload.state as Record<string, unknown> | undefined
+  const languages = state?.[STATE_PREFIX + FALLBACK_STATE]
+  return Array.isArray(languages) ? languages : []
 }
 
 /**
@@ -109,7 +124,14 @@ export async function readTextsFromUrl(
   if (options.auth) {
     headers.Authorization = getBasicAuthHeader(options.auth)
   }
-  const response = await fetch(url, { headers })
+  let response: Response
+  try {
+    response = await fetch(url, { headers })
+  } catch (error) {
+    // fetch() only says "fetch failed", the reason is its cause.
+    throw new Error(`Fetching ${url} failed.`, { cause: error })
+  }
+
   if (response.status === 401) {
     throw new Error(
       options.auth
@@ -127,10 +149,14 @@ export async function readTextsFromUrl(
   if (!match?.[1]) {
     throw new Error(`The page at ${url} has no Nuxt payload.`)
   }
-  return pickLanguage(
-    getTextsFromPayload(parsePayload(match[1])),
-    options.language,
-  )
+  const payload = parsePayload(match[1])
+  const result = pickLanguage(getTextsFromPayload(payload), options.language)
+  if (getFallbackLanguages(payload).includes(result.language)) {
+    throw new Error(
+      `The page rendered the default texts for "${result.language}", because loading the texts failed. Try again once the page loads its texts.`,
+    )
+  }
+  return result
 }
 
 /**

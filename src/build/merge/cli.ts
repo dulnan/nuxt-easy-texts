@@ -5,7 +5,7 @@ import { loadNuxt } from '@nuxt/kit'
 import colors from 'picocolors'
 import { ModuleHelper } from '../classes/ModuleHelper'
 import type { ModuleOptions } from '../types/options'
-import { mergeFile, type LiveTexts } from './mergeFile'
+import { mergeFile, type LiveTexts, type MergeFileResult } from './mergeFile'
 import { AUTH_ENV, readTextsFromFile, readTextsFromUrl } from './readTexts'
 
 const USAGE = `Usage: nuxt easy-texts merge <url|file> [options]
@@ -15,7 +15,7 @@ Replaces the default texts in the code with the live texts.
   <url>   A page of the running app, e.g. https://www.example.com/de. The
           texts are read from the payload of the rendered page.
   <file>  A JSON file with the texts, keyed by full key, as a loader returns
-          them.
+          them. A relative path is resolved against the app directory.
 
 Options:
   --language <code>       The language to read from the page, if it has
@@ -24,8 +24,19 @@ Options:
                           the ${AUTH_ENV} environment variable, which
                           can also be set in the app's .env file.
   --dry-run               Show the changes without writing them.
-  --cwd <dir>             The directory of the Nuxt app.
+
+Run it in the app directory, or pass --cwd <dir> after the command name.
 `
+
+/**
+ * Whether the file belongs to an installed package, e.g. a layer from npm or
+ * a remote layer, which is downloaded into node_modules/.c12. Changes there
+ * would be lost on the next install, and with pnpm, the file may be shared
+ * with other projects.
+ */
+export function isInstalledFile(filePath: string): boolean {
+  return /[\\/]node_modules[\\/]/.test(filePath)
+}
 
 /**
  * Returns the files that the module scans for texts, with the app's
@@ -56,7 +67,7 @@ async function merge(
   source: string,
   options: { language?: string; auth?: string; dryRun: boolean },
 ) {
-  const { files, globalTexts } = await loadApp(cwd)
+  const app = await loadApp(cwd)
 
   let texts: LiveTexts
   if (/^https?:\/\//.test(source)) {
@@ -73,13 +84,29 @@ async function merge(
     console.log(`Read ${Object.keys(texts).length} texts from ${source}`)
   }
 
-  let changeCount = 0
-  const missing = new Set<string>()
+  const files = app.files.filter((filePath) => !isInstalledFile(filePath))
+  const installedCount = app.files.length - files.length
 
+  // Every file is merged before any is written, so that an error leaves no
+  // file half merged.
+  const merged: { filePath: string; result: MergeFileResult }[] = []
   for (const filePath of files) {
     const code = await readFile(filePath, 'utf8')
-    const result = mergeFile(filePath, code, texts)
+    try {
+      merged.push({ filePath, result: mergeFile(filePath, code, texts) })
+    } catch (error) {
+      throw new Error(`Merging ${relative(cwd, filePath)} failed.`, {
+        cause: error,
+      })
+    }
+  }
+
+  let changeCount = 0
+  const missing = new Set<string>()
+  const invalid = new Set<string>()
+  for (const { filePath, result } of merged) {
     result.missing.forEach((key) => missing.add(key))
+    result.invalid.forEach((key) => invalid.add(key))
     if (!result.code) {
       continue
     }
@@ -92,12 +119,17 @@ async function merge(
       )
     }
     changeCount += result.changes.length
-    if (!options.dryRun) {
-      await writeFile(filePath, result.code)
+  }
+
+  if (!options.dryRun) {
+    for (const { filePath, result } of merged) {
+      if (result.code) {
+        await writeFile(filePath, result.code)
+      }
     }
   }
 
-  const globalChanged = Object.entries(globalTexts)
+  const globalChanged = Object.entries(app.globalTexts)
     .filter(
       ([key, value]) =>
         Object.hasOwn(texts, key) &&
@@ -112,11 +144,39 @@ async function merge(
       `${missing.size} keys have no live text: ${[...missing].join(', ')}`,
     )
   }
+  if (invalid.size) {
+    console.log(
+      `${invalid.size} keys have a live text that is not a text, or not a singular and plural text: ${[...invalid].join(', ')}`,
+    )
+  }
   if (globalChanged.length) {
     console.log(
       `${globalChanged.length} keys from globalTexts in nuxt.config were not updated: ${globalChanged.join(', ')}`,
     )
   }
+  if (installedCount) {
+    console.log(
+      `${installedCount} scanned files in node_modules, e.g. of installed layers, were left alone.`,
+    )
+  }
+}
+
+/**
+ * The message of an error, followed by the message of its root cause, e.g.
+ * "Fetching … failed. connect ECONNREFUSED …".
+ */
+function getErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return String(error)
+  }
+  let cause: unknown = error.cause
+  while (cause instanceof Error && cause.cause) {
+    cause = cause.cause
+  }
+  if (cause === undefined) {
+    return error.message
+  }
+  return `${error.message} ${cause instanceof Error ? cause.message : String(cause)}`
 }
 
 /**
@@ -175,9 +235,7 @@ export async function runCli(args: string[], cwd: string): Promise<number> {
     })
     return 0
   } catch (error) {
-    console.error(
-      colors.red(error instanceof Error ? error.message : String(error)),
-    )
+    console.error(colors.red(getErrorMessage(error)))
     return 1
   }
 }

@@ -9,6 +9,7 @@ import type { ModuleHelper } from './ModuleHelper'
 import { Cache } from './Cache'
 import colors from 'picocolors'
 import { parseKey } from '../helpers/ast'
+import { getLineNumber } from '../helpers/code'
 
 export type CollectorWatchEventResult = {
   hasChanged: boolean
@@ -287,11 +288,7 @@ export class Collector {
         if (fileContents) {
           const lines = fileContents.split('\n')
 
-          // The 1-based number of the line that contains the start position:
-          // one more than the line breaks before it.
-          const startLine = fileContents
-            .slice(0, error.call.start)
-            .split('\n').length
+          const startLine = getLineNumber(fileContents, error.call.start)
 
           // Get context: 3 lines before and 3 lines after
           const contextStart = Math.max(startLine - 3, 1)
