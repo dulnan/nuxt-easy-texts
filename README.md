@@ -202,6 +202,26 @@ the `/` of a `</script` inside `<script>`.
 
 `nuxt` answers `--help` itself, so use `nuxt easy-texts help` for the usage.
 
+## Agent skill
+
+The package ships an [agent skill](https://agentskills.io) in
+`skills/nuxt-easy-texts`. It teaches coding agents like Claude Code how to use
+`$texts`, `$textsPlural`, `useEasyTexts()`, the loader, the language override
+and the merge command, and it matches the installed version of the module.
+
+To link it into your project:
+
+- With pnpm 12.11 or newer, run `pnpm approve nuxt-easy-texts`. pnpm links the
+  skills of approved direct dependencies when it installs them.
+- With [skills-npm](https://github.com/antfu/skills-npm), run
+  `npm i -D skills-npm` and `npx skills-npm setup`. It links the skills of your
+  installed packages on every install.
+
+Or copy the skill from GitHub with the
+[skills CLI](https://github.com/vercel-labs/skills):
+`npx skills add dulnan/nuxt-easy-texts`. This copy follows the main branch, not
+your installed version.
+
 ## How it works
 
 nuxt-easy-texts searches your Vue components and JS/TS files for all calls to
