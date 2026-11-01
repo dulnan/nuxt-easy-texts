@@ -10,8 +10,9 @@
 
 This module was created to specifically solve a single problem: Having an easy
 way to collect translatable texts _and_ load their translations at runtime (for
-example from an API endpoint). The compiled build will only contain the keys and
-no more texts. They always have to be provided at runtime.
+example from an API endpoint). The compiled code only contains the keys, and the
+texts are provided at runtime. The default texts are only used as a fallback,
+when loading the texts fails.
 
 It is not meant as a full replacement for something like
 [vue-i18n](https://vue-i18n.intlify.dev) or
@@ -126,6 +127,16 @@ export default defineEasyTextsLoader(() => {
 nuxt-easy-texts will call this method inside its plugin, right before it injects
 `$texts` and `$textsPlural`. Make sure that anything that requires these two
 methods is loaded **after** this plugin is initialized.
+
+### Fallback to the default texts
+
+If `load()` throws, for example because the API is unavailable, nuxt-easy-texts
+logs the error and uses the default texts from your code instead. That way
+`$texts` and `$textsPlural` keep working, also in `error.vue`, which Nuxt shows
+when the rest of the page can't be loaded either.
+
+The default texts are built into a separate chunk. Browsers only download it
+when loading the texts fails.
 
 ### Partial Language Override
 
@@ -302,9 +313,8 @@ const countText = $textsPlural('countText', counter.value)
 ```
 
 nuxt-easy-texts requires that every text string is loaded at runtime. The
-default texts are not available at runtime in any way. You could however
-generate a JSON file with a custom `generate` method and then return said JSON
-file in your loaders `load()` method.
+default texts are only used when loading the texts fails, see
+[Fallback to the default texts](#fallback-to-the-default-texts).
 
 ### Text keys and contexts
 
@@ -400,6 +410,7 @@ export default defineNuxtConfig({
       '~/layers/**/*.{js,ts,vue}',
       '~/pages/**/*.{js,ts,vue}',
       '~/composables/**/*.{js,ts,vue}',
+      '~/error.vue',
     ],
 
     // Define what and where to generate extractions.

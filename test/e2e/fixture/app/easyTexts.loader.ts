@@ -1,5 +1,5 @@
 import { defineEasyTextsLoader } from '../../../../src/loader'
-import { computed } from '#imports'
+import { computed, useRoute } from '#imports'
 
 type TextsData = Record<string, string | [string, string]>
 
@@ -32,6 +32,7 @@ const textsData: Record<string, TextsData> = {
     // Debug mode test texts
     'debug.test': '[EN] Debug test text',
     'override.test': '[EN] Override test text',
+    'error.title': '[LOADED] Something went wrong',
   },
   de: {
     'basic.key': '[GELADEN] Basistext',
@@ -58,16 +59,28 @@ const textsData: Record<string, TextsData> = {
   },
 }
 
+/**
+ * The language whose texts fail to load, as if the backend was unavailable.
+ */
+const UNAVAILABLE = 'unavailable'
+
 export default defineEasyTextsLoader(() => {
+  const route = useRoute()
+
   return {
     load(language: string): Promise<TextsData> {
+      if (language === UNAVAILABLE) {
+        return Promise.reject(new Error('The texts backend is unavailable.'))
+      }
       // Return texts for the requested language, fallback to 'en'
       const data = textsData[language] ?? textsData.en
       return Promise.resolve(data!)
     },
     currentLanguage() {
-      // For tests, always return 'en' as the current language
-      return computed(() => 'en')
+      // 'en', unless the URL has ?language=unavailable.
+      return computed(() =>
+        route.query.language === UNAVAILABLE ? UNAVAILABLE : 'en',
+      )
     },
   }
 })

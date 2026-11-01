@@ -50,10 +50,31 @@ export default defineNuxtPlugin<EasyTextsProvide>({
       () => new Map(),
     )
 
+    /**
+     * Loads the texts with the loader. If that fails, e.g. because the backend
+     * is unavailable, uses the default texts from the code instead, so that
+     * $texts keeps working, on the error page too.
+     *
+     * The default texts are only imported here, so they are in a separate
+     * chunk that is only loaded when needed.
+     */
+    async function loadTexts(language: string): Promise<TextsState> {
+      try {
+        return await loader.load(language)
+      } catch (error) {
+        console.error(
+          `[nuxt-easy-texts] Loading the texts for language "${language}" failed, using the default texts instead.`,
+          error,
+        )
+        const { default: defaults } = await import('#nuxt-easy-texts/defaults')
+        return defaults
+      }
+    }
+
     if (!translations.value.get(currentLanguage.value)) {
       translations.value.set(
         currentLanguage.value,
-        await loader.load(currentLanguage.value),
+        await loadTexts(currentLanguage.value),
       )
     }
 
@@ -66,7 +87,7 @@ export default defineNuxtPlugin<EasyTextsProvide>({
         return cached
       }
 
-      const data = await loader.load(language)
+      const data = await loadTexts(language)
       translations.value.set(language, data)
       return data
     }
