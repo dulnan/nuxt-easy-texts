@@ -1,6 +1,6 @@
 import { computed, defineNuxtPlugin, useState, watch } from '#imports'
 import { easyTextsLoader } from '#nuxt-easy-texts/loader'
-import { DEBUG_ENABLED } from '../helpers/constants'
+import { DEBUG_ENABLED, TRANSLATIONS_STATE } from '../helpers/constants'
 import { getPluralTexts, getSingleText } from '../helpers/textsFunctions'
 import type {
   EasyTextsFunctions,
@@ -46,7 +46,7 @@ export default defineNuxtPlugin<EasyTextsProvide>({
     // Maps. The state key differs from the one used when this was an object,
     // so a payload rendered by an older version is not read as a Map.
     const translations = useState<Map<string, TextsState>>(
-      'nuxt_easy_texts_translations',
+      TRANSLATIONS_STATE,
       () => new Map(),
     )
 
