@@ -1,3 +1,5 @@
+import { fromDrupalFieldName } from './shared/drupalFieldName'
+
 /**
  * One field in the result of the fragment the drupal-graphql-texts generator
  * writes: a string for a $texts key, an object for a $textsPlural key, or
@@ -34,8 +36,7 @@ export function mapDrupalTexts(
       continue
     }
 
-    const key = fieldName.replaceAll('__', '.')
-    texts[key] =
+    texts[fromDrupalFieldName(fieldName)] =
       typeof value === 'string'
         ? value
         : [value.singular ?? '', value.plural ?? '']

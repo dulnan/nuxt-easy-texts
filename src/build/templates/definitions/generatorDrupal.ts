@@ -3,6 +3,10 @@ import {
   defineCollectorTemplate,
   type CollectorTemplate,
 } from '../defineTemplate'
+import {
+  fromDrupalFieldName,
+  toDrupalFieldName,
+} from '../../../shared/drupalFieldName'
 
 /**
  * Encode a value as a GraphQL string literal.
@@ -11,12 +15,6 @@ import {
  * is also valid in a GraphQL string, so the result is always a valid literal.
  */
 const input = (v: string) => JSON.stringify(v)
-
-/**
- * The GraphQL field name (alias) a key is loaded as: dots become double
- * underscores, e.g. "cart.addButton" => "cart__addButton".
- */
-const toFieldName = (fullKey: string) => fullKey.replaceAll('.', '__')
 
 /**
  * A GraphQL name: ASCII letters, digits and underscores, not starting with a
@@ -28,38 +26,34 @@ const GRAPHQL_NAME = /^[_A-Za-z][_0-9A-Za-z]*$/
 
 /**
  * Report keys that can't be loaded with this generator: their field name is
- * not a valid GraphQL name, or another key has the same field name.
+ * not a valid GraphQL name, or mapDrupalTexts() can't read it back as the key.
  *
- * Without this, the generated fragment is invalid and the error only shows up
- * in whatever processes it, pointing at the generated file instead of the
- * call.
+ * Without this, the generated fragment is invalid, or the text is loaded under
+ * a different key and the page shows the key instead of the text. Because
+ * every accepted key is read back as itself, no two accepted keys share a
+ * field name.
  */
 function validate(extractions: Extraction[]): ExtractionError[] {
   const errors: ExtractionError[] = []
-  const keysByFieldName = new Map<string, string>()
 
   for (const extraction of extractions) {
-    const fieldName = toFieldName(extraction.fullKey)
+    const { fullKey } = extraction
+    const fieldName = toDrupalFieldName(fullKey)
+    const readBack = fromDrupalFieldName(fieldName)
     const report = (message: string) =>
       errors.push({
-        message,
+        message: `Key "${fullKey}" can't be used with the drupal-graphql-texts generator.\n${message}`,
         filePath: extraction.filePath,
         call: extraction.call,
       })
 
     if (!GRAPHQL_NAME.test(fieldName)) {
       report(
-        `Key "${extraction.fullKey}" can't be used with the drupal-graphql-texts generator.\nIt becomes the GraphQL field name "${fieldName}", which may only contain ASCII letters, digits and underscores, and must not start with a digit.`,
+        `It becomes the GraphQL field name "${fieldName}", which may only contain ASCII letters, digits and underscores, and must not start with a digit.`,
       )
-      continue
-    }
-
-    const other = keysByFieldName.get(fieldName)
-    if (other === undefined) {
-      keysByFieldName.set(fieldName, extraction.fullKey)
-    } else {
+    } else if (readBack !== fullKey) {
       report(
-        `Keys "${other}" and "${extraction.fullKey}" can't both be used with the drupal-graphql-texts generator:\nboth become the GraphQL field name "${fieldName}".`,
+        `It becomes the GraphQL field name "${fieldName}", which mapDrupalTexts() reads back as the key "${readBack}". Keys can't contain "__" or an underscore right before a dot.`,
       )
     }
   }
@@ -75,7 +69,7 @@ export default function (path: string): CollectorTemplate {
     (extractions) => {
       const fields: string = extractions
         .map((extraction) => {
-          const fieldName = toFieldName(extraction.fullKey)
+          const fieldName = toDrupalFieldName(extraction.fullKey)
           const args: Record<string, string | undefined> = {
             key: extraction.key,
             context: extraction.context,

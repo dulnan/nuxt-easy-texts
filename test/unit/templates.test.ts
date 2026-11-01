@@ -249,9 +249,14 @@ describe('drupal-graphql-texts generator', () => {
     it('accepts keys that become valid GraphQL field names', () => {
       expect(
         validate(
-          ['homeTitle', 'cart.addButton', 'a_b.c1', '_private', 'x.y.z'].map(
-            (key) => text(key, 'Text'),
-          ),
+          [
+            'homeTitle',
+            'cart.addButton',
+            'a_b.c1',
+            '_private',
+            'cart._private',
+            'x.y.z',
+          ].map((key) => text(key, 'Text')),
         ),
       ).toEqual([])
     })
@@ -274,13 +279,36 @@ describe('drupal-graphql-texts generator', () => {
       },
     )
 
-    it('rejects keys that become the same field name', () => {
+    it.each([
+      ['foo__bar', 'foo.bar'],
+      ['cart.foo__bar', 'cart.foo.bar'],
+      ['a_.b', 'a._b'],
+      ['__typename', '.typename'],
+    ])(
+      'rejects %j, which mapDrupalTexts() reads back as %j',
+      (key, readBack) => {
+        const extraction = {
+          ...text(key, 'Text'),
+          call: { code: `$texts('${key}', 'Text')`, start: 10, end: 30 },
+        }
+
+        expect(validate([extraction])).toEqual([
+          {
+            message: expect.stringContaining(
+              `reads back as the key "${readBack}"`,
+            ),
+            filePath: 'a.vue',
+            call: extraction.call,
+          },
+        ])
+      },
+    )
+
+    it('only rejects the key that is not read back when two keys share a field name', () => {
       const errors = validate([text('a.b', 'One'), text('a__b', 'Two')])
 
       expect(errors).toHaveLength(1)
-      expect(errors[0]!.message).toContain(
-        'Keys "a.b" and "a__b" can\'t both be used',
-      )
+      expect(errors[0]!.message).toContain('Key "a__b" can\'t be used')
     })
   })
 
