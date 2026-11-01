@@ -10,9 +10,10 @@ describe('ModuleHelper patterns', () => {
   let layer: string
 
   /**
-   * A helper for an app with one extra layer, using the given patterns.
+   * A helper for an app with one extra layer, using the given patterns, or the
+   * default patterns.
    */
-  function createHelper(pattern: string[]) {
+  function createHelper(pattern?: string[]) {
     const nuxt = {
       options: {
         _prepare: false,
@@ -31,7 +32,7 @@ describe('ModuleHelper patterns', () => {
 
     return new ModuleHelper(nuxt, import.meta.url, {
       generators: [],
-      pattern,
+      ...(pattern && { pattern }),
     })
   }
 
@@ -43,8 +44,10 @@ describe('ModuleHelper patterns', () => {
     for (const path of [
       'app/easyTexts.loader.ts',
       'app/components/A.vue',
+      'app/error.vue',
       'app/components/skip/B.vue',
       'layers/base/app/components/C.vue',
+      'layers/base/app/error.vue',
       'layers/base/app/components/skip/D.vue',
       'server/api/texts.ts',
     ]) {
@@ -86,6 +89,13 @@ describe('ModuleHelper patterns', () => {
       expected,
     )
   })
+
+  it.each(['app/error.vue', 'layers/base/app/error.vue'])(
+    'matches %s with the default patterns',
+    (path) => {
+      expect(createHelper().matchesImportPattern(file(path))).toBe(true)
+    },
+  )
 })
 
 describe('ModuleHelper loader path', () => {

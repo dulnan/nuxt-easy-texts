@@ -400,6 +400,7 @@ export default defineNuxtConfig({
       '~/layers/**/*.{js,ts,vue}',
       '~/pages/**/*.{js,ts,vue}',
       '~/composables/**/*.{js,ts,vue}',
+      '~/error.vue',
     ],
 
     // Define what and where to generate extractions.

@@ -40,6 +40,7 @@ const defaultOptions: RequiredModuleOptions = {
     '~/layers/**/*.{js,ts,vue}',
     '~/pages/**/*.{js,ts,vue}',
     '~/composables/**/*.{js,ts,vue}',
+    '~/error.vue',
   ],
   generators: [],
 
