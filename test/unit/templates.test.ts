@@ -4,6 +4,7 @@ import ts from 'typescript'
 import type { ModuleHelper } from '../../src/build/classes/ModuleHelper'
 import type { Extraction } from '../../src/build/types/extraction'
 import keysTemplate from '../../src/build/templates/definitions/keys'
+import defaultsTemplate from '../../src/build/templates/definitions/defaults'
 import loaderTemplate from '../../src/build/templates/definitions/loader'
 import globalTemplate from '../../src/build/templates/definitions/global'
 import generatorDrupal from '../../src/build/templates/definitions/generatorDrupal'
@@ -333,6 +334,71 @@ describe('drupal-graphql-texts generator', () => {
     expect(parseFields(code)).toEqual([
       { key: 'items', singular: `One ${value}`, plural: `@count ${value}` },
     ])
+  })
+})
+
+describe('defaults template', () => {
+  /**
+   * Parses the generated module and returns its default export.
+   */
+  async function evaluate(extractions: Extraction[]) {
+    const code = await defaultsTemplate.build!(extractions, helper)
+    parseJs(code, { ecmaVersion: 'latest', sourceType: 'module' })
+    return new Function(code.replace(/^export default /, 'return '))()
+  }
+
+  it('exports the default texts in the shape a loader returns', async () => {
+    expect(
+      await evaluate([
+        text('homeTitle', 'Welcome'),
+        text('cart.addButton', 'Add to cart'),
+        plural('cart.items', '1 item', '@count items'),
+        plural('cart.empty', '', ''),
+      ]),
+    ).toEqual({
+      homeTitle: 'Welcome',
+      'cart.addButton': 'Add to cart',
+      'cart.items': ['1 item', '@count items'],
+      'cart.empty': ['', ''],
+    })
+  })
+
+  it('leaves out texts without a default text', async () => {
+    expect(
+      await evaluate([
+        {
+          type: 'text',
+          fullKey: 'noDefault',
+          key: 'noDefault',
+          filePath: 'a.vue',
+        },
+        text('emptyDefault', ''),
+      ]),
+    ).toEqual({ emptyDefault: '' })
+  })
+
+  it('keeps keys and texts unchanged', async () => {
+    const extractions: Extraction[] = TRICKY.flatMap((value, i) => [
+      text(`single.${i}.${value}`, `Default ${value}`),
+      plural(`plural.${i}.${value}`, `One ${value}`, `@count ${value}`),
+    ])
+
+    expect(await evaluate(extractions)).toEqual(
+      Object.fromEntries(
+        extractions.map((e) => [
+          e.fullKey,
+          e.type === 'text' ? e.defaultText : [e.singular, e.plural],
+        ]),
+      ),
+    )
+  })
+
+  it('exports a "__proto__" key as a text', async () => {
+    const texts = await evaluate([text('__proto__', 'Prototype')])
+
+    expect(Object.getPrototypeOf(texts)).toBe(Object.prototype)
+    expect(Object.keys(texts)).toEqual(['__proto__'])
+    expect(texts['__proto__']).toBe('Prototype')
   })
 })
 

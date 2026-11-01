@@ -12,6 +12,7 @@ import {
   TEMPLATES,
 } from './build/templates'
 import { DevModeHandler } from './build/classes/DevModeHandler'
+import { removeDefaultTextsPrefetch } from './build/helpers/manifest'
 
 export type { ModuleOptions }
 
@@ -36,6 +37,10 @@ export default defineNuxtModule<ModuleOptions>({
         collector.addTemplate(definition)
       }
     })
+
+    // The runtime imports the default texts only when loading the texts
+    // fails. Keep browsers from downloading them in the background.
+    nuxt.hook('build:manifest', removeDefaultTextsPrefetch)
 
     // Add custom generator templates.
     helper.options.generators.forEach((generator) => {

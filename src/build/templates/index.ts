@@ -3,10 +3,17 @@ import loader from './definitions/loader'
 import keys from './definitions/keys'
 import global from './definitions/global'
 import settings from './definitions/settings'
+import defaults from './definitions/defaults'
 import generatorDrupal from './definitions/generatorDrupal'
 import generatorJson from './definitions/generatorJson'
 import generatorCustom from './definitions/generatorCustom'
 
-export const TEMPLATES: ModuleTemplate[] = [loader, keys, global, settings]
+export const TEMPLATES: ModuleTemplate[] = [
+  loader,
+  keys,
+  global,
+  settings,
+  defaults,
+]
 
 export { generatorDrupal, generatorJson, generatorCustom }
