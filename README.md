@@ -240,6 +240,36 @@ ASCII letters, digits, underscores and dots, and must not start with a digit.
 Two keys must also not become the same name, like `a.b` and `a__b`. The build
 fails with an error pointing at the call otherwise.
 
+Use the fragment in a query on `textsLoader`:
+
+```graphql
+query loadTexts {
+  textsLoader {
+    ...easyTexts
+  }
+}
+```
+
+Then turn the result into the texts your loader returns with `mapDrupalTexts()`.
+It turns each field name back into its key, e.g. `cart__addButton` into
+`cart.addButton`, and each plural text into its singular and plural text.
+
+```typescript
+import { defineEasyTextsLoader } from 'nuxt-easy-texts/loader'
+import { mapDrupalTexts } from 'nuxt-easy-texts/drupal'
+
+export default defineEasyTextsLoader(() => {
+  return {
+    async load(language) {
+      // Run the loadTexts query in the given language, with the GraphQL
+      // client of your app.
+      const data = await queryDrupal('loadTexts', language)
+      return mapDrupalTexts(data.textsLoader)
+    },
+  }
+})
+```
+
 ### Load the texts
 
 All default/singular/plural texts in your code are removed via a vite plugin,

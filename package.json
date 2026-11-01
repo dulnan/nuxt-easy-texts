@@ -12,7 +12,8 @@
       "types": "./dist/types.d.mts",
       "import": "./dist/module.mjs"
     },
-    "./loader": "./dist/loader.mjs"
+    "./loader": "./dist/loader.mjs",
+    "./drupal": "./dist/drupal.mjs"
   },
   "main": "./dist/module.mjs",
   "typesVersions": {
@@ -22,6 +23,9 @@
       ],
       "loader": [
         "./dist/loader.d.mts"
+      ],
+      "drupal": [
+        "./dist/drupal.d.mts"
       ]
     }
   },

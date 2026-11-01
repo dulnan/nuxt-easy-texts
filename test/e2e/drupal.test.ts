@@ -42,6 +42,7 @@ describe.runIf(drupalUrl)('drupal/texts integration', async () => {
       'not-in-drupal': 'Text only in the code',
       'learn-more': 'Learn more',
       'add-to-cart': 'Add to cart',
+      'cart-summary': 'Your cart',
       'cart-items': '1 item',
       notifications: '2 notifications',
     })
@@ -60,6 +61,7 @@ describe.runIf(drupalUrl)('drupal/texts integration', async () => {
       'not-in-drupal': 'Text only in the code',
       'learn-more': 'Learn more',
       'add-to-cart': 'In den Warenkorb',
+      'cart-summary': 'Ihr Warenkorb',
       'cart-items': '1 Artikel',
       notifications: '2 notifications',
     })

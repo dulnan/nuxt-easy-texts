@@ -24,6 +24,7 @@ function easy_texts_playground_install(): void {
     ['homeTitle', 'default', ['en' => 'Welcome!', 'de' => 'Willkommen!']],
     ['greeting', 'default', ['en' => 'Hello @name!', 'de' => 'Hallo @name!']],
     ['addButton', 'cart', ['en' => 'Add to cart', 'de' => 'In den Warenkorb']],
+    ['summary.title', 'cart', ['en' => 'Your cart', 'de' => 'Ihr Warenkorb']],
     ['items', 'cart', [
       'en' => ['1 item', '@count items'],
       'de' => ['1 Artikel', '@count Artikel'],

@@ -21,6 +21,9 @@
     <button data-testid="add-to-cart" @click="count++">
       {{ $texts('cart.addButton', 'Add to cart') }}
     </button>
+    <p data-testid="cart-summary">
+      {{ $texts('cart.summary.title', 'Your cart') }}
+    </p>
     <p data-testid="cart-items">
       {{ $textsPlural('cart.items', count, '1 item', '@count items') }}
     </p>
