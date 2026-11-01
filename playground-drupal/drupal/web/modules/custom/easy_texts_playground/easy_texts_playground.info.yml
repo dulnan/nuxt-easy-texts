@@ -1,0 +1,9 @@
+name: 'nuxt-easy-texts playground'
+type: module
+description: 'Sets up the Drupal site for the nuxt-easy-texts playground.'
+package: Testing
+core_version_requirement: ^11
+dependencies:
+  - drupal:language
+  - graphql_core_schema:graphql_core_schema
+  - texts:texts_graphql

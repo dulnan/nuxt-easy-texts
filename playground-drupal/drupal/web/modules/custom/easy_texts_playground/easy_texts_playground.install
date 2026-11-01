@@ -1,0 +1,56 @@
+<?php
+
+/**
+ * @file
+ * Install hooks of the nuxt-easy-texts playground module.
+ */
+
+declare(strict_types=1);
+
+use Drupal\Component\Gettext\PoItem;
+
+/**
+ * Implements hook_install().
+ */
+function easy_texts_playground_install(): void {
+  // Let the Nuxt app load the texts without logging in.
+  user_role_grant_permissions('anonymous', ['execute easy_texts arbitrary graphql requests']);
+
+  // Texts that exist in Drupal before the Nuxt app loads them for the first
+  // time. Every other text is created by drupal/texts when the Nuxt app first
+  // asks for it, with the default text from the code. The E2E test in
+  // test/e2e/drupal.test.ts relies on these.
+  $texts = [
+    ['homeTitle', 'default', ['en' => 'Welcome!', 'de' => 'Willkommen!']],
+    ['greeting', 'default', ['en' => 'Hello @name!', 'de' => 'Hallo @name!']],
+    ['addButton', 'cart', ['en' => 'Add to cart', 'de' => 'In den Warenkorb']],
+    ['items', 'cart', [
+      'en' => ['1 item', '@count items'],
+      'de' => ['1 Artikel', '@count Artikel'],
+    ]],
+    // Differs from the default text in the code, and has no German text.
+    ['editedInDrupal', 'default', ['en' => 'Text edited in Drupal']],
+  ];
+
+  $storage = \Drupal::entityTypeManager()->getStorage('texts');
+  foreach ($texts as [$key, $context, $translations]) {
+    // drupal/texts stores a plural text as its two forms joined by the same
+    // delimiter as gettext.
+    $plural = is_array($translations['en']);
+    $value = fn (string|array $translation): string => $plural
+      ? implode(PoItem::DELIMITER, $translation)
+      : $translation;
+
+    $text = $storage->create([
+      'key' => $key,
+      'context' => $context,
+      'langcode' => 'en',
+      'plural' => $plural,
+      'translation' => $value($translations['en']),
+    ]);
+    if (isset($translations['de'])) {
+      $text->addTranslation('de', ['translation' => $value($translations['de'])]);
+    }
+    $text->save();
+  }
+}

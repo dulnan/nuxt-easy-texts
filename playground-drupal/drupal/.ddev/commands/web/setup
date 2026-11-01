@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+## Description: Install Drupal with drupal/texts and graphql_core_schema from scratch. Deletes all existing data.
+## Usage: setup
+## Example: "ddev setup"
+
+set -euo pipefail
+
+composer install --no-interaction --no-progress
+drush site:install minimal --yes --site-name=nuxt-easy-texts --account-pass=admin
+
+# Don't download Drupal's own translations from localize.drupal.org when the
+# German language is added. Only the texts are needed.
+drush pm:install --yes locale
+drush config:set --yes --input-format=yaml locale.settings translation.import_enabled false
+
+drush pm:install --yes easy_texts_playground
