@@ -295,6 +295,44 @@ describe('reading the texts from a payload', () => {
     expect(getFallbackLanguages({ state: {} })).toEqual([])
   })
 
+  it('reads the texts from the state of versions 2.1.0 to 2.2.0', () => {
+    // The payload of a page rendered with nuxt-easy-texts 2.2.0.
+    const serialized = String.raw`[["ShallowReactive",1],{"data":2,"state":4,"once":13,"_errors":14,"serverRendered":16,"path":17},["ShallowReactive",3],{},["Reactive",5],{"$snuxt_easy_texts_debug_enabled":6,"$snuxt_easy_texts":7},false,{"en":8},{"title":9,"cart.items":10},"Title edited in production",[11,12],"One edited item","@count edited items",["Set"],["ShallowReactive",15],{},true,"\u002F"]`
+
+    expect(getTextsFromPayload(parsePayload(serialized))).toEqual(
+      new Map([
+        [
+          'en',
+          {
+            title: 'Title edited in production',
+            'cart.items': ['One edited item', '@count edited items'],
+          },
+        ],
+      ]),
+    )
+  })
+
+  it('prefers the current state over the one of older versions', () => {
+    const payload = parsePayload(
+      stringify({
+        state: {
+          $snuxt_easy_texts: { de: { title: 'Alt' } },
+          $snuxt_easy_texts_translations: translations,
+        },
+      }),
+    )
+
+    expect(getTextsFromPayload(payload)).toEqual(translations)
+  })
+
+  it('names the oldest supported version for the state of version 2.0', () => {
+    const payload = { state: { $snuxt_easy_texts: { title: 'Title' } } }
+
+    expect(() => getTextsFromPayload(payload)).toThrow(
+      'the page must use nuxt-easy-texts 2.1.0 or newer.',
+    )
+  })
+
   it('throws when the payload has no texts', () => {
     expect(() => getTextsFromPayload({ state: {} })).toThrow(
       'The page has no texts in its payload.',
@@ -310,5 +348,6 @@ describe('reading the texts from a payload', () => {
     expect(pickLanguage(translations).language).toBe('de')
     expect(pickLanguage(several, 'fr').texts).toEqual({ title: 'Titre' })
     expect(() => pickLanguage(several)).toThrow('Pick one with --language.')
+    expect(() => pickLanguage(new Map())).toThrow('The page loaded no texts.')
   })
 })

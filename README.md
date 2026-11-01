@@ -167,7 +167,9 @@ npx nuxt easy-texts merge https://www.example.com/en
 
 The texts are read from the payload of the rendered page, so this works with any
 loader. Pass a page in the language of your default texts. Server-side rendering
-must be enabled. If loading the texts failed and the page shows the
+must be enabled. The page may still run an older version of nuxt-easy-texts,
+from 2.1.0 on, so you can merge before deploying the update. If loading the
+texts failed and the page shows the
 [default texts](#fallback-to-the-default-texts) instead, the command refuses to
 merge.
 

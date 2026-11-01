@@ -40,19 +40,46 @@ export function parsePayload(serialized: string): Record<string, unknown> {
 }
 
 /**
+ * The state key under which versions 2.1.0 to 2.2.0 kept the loaded texts, as
+ * an object keyed by language. These versions have no fallback to the default
+ * texts: if loading fails, the page fails, so its texts are always live.
+ */
+const LEGACY_TRANSLATIONS_STATE = 'nuxt_easy_texts'
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+/**
+ * Whether the value is an object of texts keyed by language.
+ */
+function isTextsByLanguage(value: unknown): value is Record<string, LiveTexts> {
+  return isObject(value) && Object.values(value).every(isObject)
+}
+
+/**
  * Returns the loaded texts from a Nuxt payload, keyed by language.
+ *
+ * Also reads the payload of a page rendered by an older version, so that the
+ * command works before the new version is deployed.
  */
 export function getTextsFromPayload(
   payload: Record<string, unknown>,
 ): Map<string, LiveTexts> {
-  const state = payload.state as Record<string, unknown> | undefined
-  const translations = state?.[STATE_PREFIX + TRANSLATIONS_STATE]
-  if (!(translations instanceof Map)) {
-    throw new Error(
-      'The page has no texts in its payload. Is nuxt-easy-texts installed and server-side rendering enabled?',
-    )
+  const state = isObject(payload.state) ? payload.state : {}
+  const translations = state[STATE_PREFIX + TRANSLATIONS_STATE]
+  if (translations instanceof Map) {
+    return translations
   }
-  return translations
+
+  const legacy = state[STATE_PREFIX + LEGACY_TRANSLATIONS_STATE]
+  if (isTextsByLanguage(legacy)) {
+    return new Map(Object.entries(legacy))
+  }
+
+  throw new Error(
+    'The page has no texts in its payload. Server-side rendering must be enabled, and the page must use nuxt-easy-texts 2.1.0 or newer.',
+  )
 }
 
 /**
@@ -82,6 +109,9 @@ export function pickLanguage(
       )
     }
     return { language, texts: found }
+  }
+  if (texts.size === 0) {
+    throw new Error('The page loaded no texts.')
   }
   if (texts.size !== 1) {
     throw new Error(
