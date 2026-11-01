@@ -27,6 +27,10 @@ npm run format:fix       # Auto-format (oxfmt)
 
 # Build
 npm run prepack          # Build module for distribution
+
+# Drupal integration (needs DDEV, see playground-drupal/README.md)
+npm run dev:drupal       # Start the Drupal playground's Nuxt dev server
+npm run test:drupal      # E2E test against the Drupal site
 ```
 
 ## Architecture
