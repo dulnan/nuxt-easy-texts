@@ -83,8 +83,10 @@ const text = computed(() => $texts('backToTop', 'Back to top'))
 ### Configure loader
 
 All texts are loaded at runtime. How and where the texts are loaded is up to
-you. To define a loader, create the following file in
-`~/app/easyTexts.loader.ts`:
+you. To define a loader, create the file `easyTexts.loader.ts` in your app
+directory (`app/` by default, see
+[`dir.app`](https://nuxt.com/docs/4.x/api/nuxt-config#dir)), so
+`app/easyTexts.loader.ts`:
 
 ```typescript
 import { defineEasyTextsLoader } from 'nuxt-easy-texts/loader'
@@ -231,6 +233,13 @@ fragment easyTexts on TextsLoader {
 }
 ```
 
+Each key is loaded as a GraphQL field whose name is the key with dots replaced
+by double underscores, e.g. `cart.addButton` becomes `cart__addButton`. That
+name must be a valid GraphQL name, so with this generator keys may only contain
+ASCII letters, digits, underscores and dots, and must not start with a digit.
+Two keys must also not become the same name, like `a.b` and `a__b`. The build
+fails with an error pointing at the call otherwise.
+
 ### Load the texts
 
 All default/singular/plural texts in your code are removed via a vite plugin,
@@ -242,7 +251,12 @@ const { $texts, $textsPlural } = useEasyTexts()
 const title = $texts('footerCopyright', '© 2024 ACME')
 
 const counter = ref(1)
-const countText = $texts('countText', counter.value, 'One item', '@count items')
+const countText = $textsPlural(
+  'countText',
+  counter.value,
+  'One item',
+  '@count items',
+)
 ```
 
 This is compiled to:
@@ -284,6 +298,9 @@ This will generate the following extraction:
   "filePath": "/var/www/example/components/AddToCart.vue"
 }
 ```
+
+Only the first dot separates the context from the key, so `cart.items.title` has
+the context `cart` and the key `items.title`.
 
 ## Debug Mode
 
@@ -342,13 +359,16 @@ export default defineNuxtConfig({
   modules: ['nuxt-easy-texts'],
 
   easyTexts: {
-    // Define which files to include.
+    // Define which files to include. These are the defaults.
+    // Patterns starting with ~ or @ are resolved for every layer, patterns
+    // starting with . are relative to the root dir. Prefix a pattern with ! to
+    // exclude files, e.g. '!~/components/stories/**'.
     pattern: [
-      './components/**/*.{js,ts,vue}',
-      './layouts/**/*.{js,ts,vue}',
-      './layers/**/*.{js,ts,vue}',
-      './pages/**/*.{js,ts,vue}',
-      './composables/**/*.{js,ts,vue}',
+      '~/components/**/*.{js,ts,vue}',
+      '~/layouts/**/*.{js,ts,vue}',
+      '~/layers/**/*.{js,ts,vue}',
+      '~/pages/**/*.{js,ts,vue}',
+      '~/composables/**/*.{js,ts,vue}',
     ],
 
     // Define what and where to generate extractions.
@@ -361,6 +381,7 @@ export default defineNuxtConfig({
 
     // Provide text keys and default values at build time.
     // Useful if you have keys that can't be extracted for some reason.
+    // Keys defined here can be used in code without a default text.
     globalTexts: {
       learnMore: 'Learn more',
       resultsTitle: ['1 result', '@count results'],
@@ -398,6 +419,9 @@ Use text string with a singular and plural option.
 const cartCount = ref(2)
 $textsPlural('cartItems', cartCount.value, '1 items', '@count items')
 ```
+
+The singular text is used when the count is 1. `@count` is replaced with the
+count in both texts, so a translation may also use it in the singular text.
 
 #### isDebug: ComputeRef<boolean>
 

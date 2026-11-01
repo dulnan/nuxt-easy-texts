@@ -1,11 +1,9 @@
-import { extname } from 'pathe'
 import type { Nuxt, WatchEvent } from 'nuxt/schema'
 import type { Collector } from './Collector'
 import type { ModuleHelper } from './ModuleHelper'
 import type { ViteDevServer, WebSocketServer } from 'vite'
 import type { ExtractionError } from '../types/extraction'
-
-const POSSIBLE_EXTENSIONS = ['.js', '.ts', '.vue', '.mjs']
+import { SOURCE_FILE_REGEX } from '../helpers/code'
 
 export class DevModeHandler {
   private viteWebSocket: WebSocketServer | null = null
@@ -43,8 +41,7 @@ export class DevModeHandler {
   async onBuilderWatch(event: WatchEvent, providedFilePath: string) {
     this.helper.logDebug('onBuilderWatch: ' + event)
 
-    const fileExtension = extname(providedFilePath).toLowerCase()
-    if (!POSSIBLE_EXTENSIONS.includes(fileExtension)) {
+    if (!SOURCE_FILE_REGEX.test(providedFilePath)) {
       return
     }
 

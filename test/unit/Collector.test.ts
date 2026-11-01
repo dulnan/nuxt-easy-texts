@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { ModuleHelper } from '../../src/build/classes/ModuleHelper'
 import type { CollectorTemplate } from '../../src/build/templates/defineTemplate'
+import type { Extraction } from '../../src/build/types/extraction'
 import { Collector } from '../../src/build/classes/Collector'
 import { CollectedFile } from '../../src/build/classes/CollectedFile'
 import { addTemplate, addServerTemplate, addTypeTemplate } from '@nuxt/kit'
@@ -207,6 +208,37 @@ describe('Collector', () => {
       await expect(collector.init()).rejects.toThrow(
         'nuxt-easy-texts initialisation failed.',
       )
+    })
+
+    it('logs an unexpected error and keeps it as the cause', async () => {
+      const helper = createMockHelper({
+        isDev: false,
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
+      })
+      const cause = new Error('EACCES: permission denied')
+      vi.mocked(CollectedFile.fromFilePath).mockRejectedValue(cause)
+
+      const collector = new Collector(helper)
+
+      await expect(collector.init()).rejects.toMatchObject({
+        message: 'nuxt-easy-texts initialisation failed.',
+        cause,
+      })
+      expect(mockLoggerError).toHaveBeenCalledWith(cause)
+    })
+
+    it('logs an unexpected error in dev mode without throwing', async () => {
+      const helper = createMockHelper({
+        isDev: true,
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
+      })
+      const cause = new Error('EACCES: permission denied')
+      vi.mocked(CollectedFile.fromFilePath).mockRejectedValue(cause)
+
+      const collector = new Collector(helper)
+
+      await expect(collector.init()).resolves.toBeUndefined()
+      expect(mockLoggerError).toHaveBeenCalledWith(cause)
     })
 
     it('does not throw in dev mode on validation failure', async () => {
@@ -526,6 +558,35 @@ describe('Collector', () => {
         expect(otherResult.hasChanged).toBe(true)
       })
 
+      it('keeps files of a sibling directory whose name starts the same', async () => {
+        const helper = createMockHelper({
+          getImportPatternFiles: async () => ['/path/to/cards/file.vue'],
+        })
+        vi.mocked(CollectedFile.fromFilePath).mockImplementation(
+          async (_, path) =>
+            createMockCollectedFile({
+              filePath: path,
+              fileContents: '$texts("key", "value")',
+            }) as any,
+        )
+
+        const collector = new Collector(helper)
+        await collector.init()
+
+        const result = await collector.handleWatchEvent(
+          'unlinkDir',
+          '/path/to/card',
+        )
+        expect(result.hasChanged).toBe(false)
+
+        // The file is still collected, so removing it is a change.
+        const fileResult = await collector.handleWatchEvent(
+          'unlink',
+          '/path/to/cards/file.vue',
+        )
+        expect(fileResult.hasChanged).toBe(true)
+      })
+
       it('returns false when no files in directory', async () => {
         const helper = createMockHelper()
 
@@ -638,6 +699,94 @@ describe('Collector', () => {
       const collector = new Collector(helper)
 
       await expect(collector.init()).rejects.toThrow()
+      expect(mockLoggerBox).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\$textsPlural key "same\.key" has different singular texts \("One item" vs\. "One thing"\) and plural texts \("@count items" vs\. "@count things"\)\./,
+        ),
+      )
+    })
+
+    it('reports the errors of a template validator', async () => {
+      const helper = createMockHelper({
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
+      })
+      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(
+        createMockCollectedFile({
+          filePath: '/path/to/file.vue',
+          fileContents: '$texts("bad-key", "Text")',
+          extractions: [
+            {
+              type: 'text',
+              fullKey: 'bad-key',
+              key: 'bad-key',
+              defaultText: 'Text',
+              filePath: '/path/to/file.vue',
+            },
+          ],
+        }) as any,
+      )
+
+      const collector = new Collector(helper)
+      collector.addTemplate({
+        type: 'collector',
+        options: { path: 'test/output' },
+        build: () => '',
+        buildTypes: null,
+        validate: (extractions) =>
+          extractions.map((e) => ({
+            message: `Template can't use "${e.fullKey}".`,
+            filePath: e.filePath,
+          })),
+      })
+
+      await expect(collector.init()).rejects.toThrow()
+      expect(mockLoggerBox).toHaveBeenCalledWith(
+        expect.stringContaining(`Template can't use "bad-key".`),
+      )
+    })
+
+    it('names only the plural text when only that one differs', async () => {
+      const helper = createMockHelper({
+        isDev: false,
+        getImportPatternFiles: async () => [
+          '/path/to/file1.vue',
+          '/path/to/file2.vue',
+        ],
+      })
+
+      const createFile = (filePath: string, plural: string) =>
+        createMockCollectedFile({
+          filePath,
+          fileContents: `$textsPlural("same.key", count, "One item", "${plural}")`,
+          extractions: [
+            {
+              type: 'plural',
+              fullKey: 'same.key',
+              key: 'key',
+              context: 'same',
+              singular: 'One item',
+              plural,
+              filePath,
+            },
+          ],
+        })
+
+      vi.mocked(CollectedFile.fromFilePath)
+        .mockResolvedValueOnce(
+          createFile('/path/to/file1.vue', '@count items') as any,
+        )
+        .mockResolvedValueOnce(
+          createFile('/path/to/file2.vue', '@count things') as any,
+        )
+
+      const collector = new Collector(helper)
+
+      await expect(collector.init()).rejects.toThrow()
+      expect(mockLoggerBox).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\$textsPlural key "same\.key" has different plural texts \("@count items" vs\. "@count things"\)\./,
+        ),
+      )
     })
 
     it('detects missing default text for single texts', async () => {
@@ -821,39 +970,202 @@ describe('Collector', () => {
     })
   })
 
-  describe('globalTexts integration', () => {
-    it('uses globalTexts as fallback defaults', async () => {
+  describe('error log', () => {
+    it('shows three lines around the line of the call', async () => {
+      const fileContents = Array.from(
+        { length: 10 },
+        (_, i) => `line ${i + 1}`,
+      ).join('\n')
+      // The call starts at the first character of line 6.
+      const start = fileContents.indexOf('line 6')
       const helper = createMockHelper({
-        isDev: false,
-        globalTexts: {
-          'global.key': 'Global default text',
-        },
         getImportPatternFiles: async () => ['/path/to/file.vue'],
       })
+      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(
+        createMockCollectedFile({
+          filePath: '/path/to/file.vue',
+          fileContents,
+          errors: [
+            {
+              message: 'Broken call',
+              filePath: '/path/to/file.vue',
+              call: { code: 'line 6', start, end: start + 6 },
+            },
+          ],
+        }) as any,
+      )
 
-      // File uses the key without default - should be OK because globalTexts has it
-      const mockFile = createMockCollectedFile({
-        filePath: '/path/to/file.vue',
-        fileContents: '$texts("global.key")',
-        extractions: [
-          {
-            type: 'text',
-            fullKey: 'global.key',
-            key: 'key',
-            context: 'global',
-            filePath: '/path/to/file.vue',
-            // No defaultText, but globalTexts has it
-          },
-        ],
+      await expect(new Collector(helper).init()).rejects.toThrow()
+
+      const box: string = mockLoggerBox.mock.calls[0]![0]
+      const shownLines = [...box.matchAll(/^\s*(\d+) \|/gm)].map((m) =>
+        Number(m[1]),
+      )
+      expect(shownLines).toEqual([3, 4, 5, 6, 7, 8, 9])
+    })
+  })
+
+  describe('output order', () => {
+    it('sorts the extractions independently of the system locale', async () => {
+      // In e.g. Swedish, "ä" sorts after "z"; in English, next to "a".
+      const keys = ['a.key', 'z.key', 'ä.key']
+      const helper = createMockHelper({
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
       })
-
-      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(mockFile as any)
+      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(
+        createMockCollectedFile({
+          filePath: '/path/to/file.vue',
+          fileContents: '$texts("a.key", "A")',
+          extractions: keys.map((fullKey) => ({
+            type: 'text',
+            fullKey,
+            key: 'key',
+            defaultText: fullKey,
+            filePath: '/path/to/file.vue',
+          })),
+        }) as any,
+      )
 
       const collector = new Collector(helper)
+      let received: string[] = []
+      collector.addTemplate({
+        type: 'collector',
+        options: { path: 'test/output' },
+        build: (extractions) => {
+          received = extractions.map((e) => e.fullKey)
+          return ''
+        },
+        buildTypes: null,
+      })
+      await collector.init()
 
-      // Should not throw because globalTexts provides the default
-      // Note: The current implementation doesn't actually use globalTexts as fallback
-      // for validation, but this test documents the expected behavior
+      expect(received).toEqual(['z.key', 'ä.key', 'a.key'])
+    })
+  })
+
+  describe('hasKey', () => {
+    it('knows the keys from scanned files and globalTexts', async () => {
+      const helper = createMockHelper({
+        globalTexts: { 'global.key': 'Global' },
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
+      })
+      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(
+        createMockCollectedFile({
+          filePath: '/path/to/file.vue',
+          fileContents: '$texts("file.key", "File")',
+          extractions: [
+            {
+              type: 'text',
+              fullKey: 'file.key',
+              key: 'key',
+              context: 'file',
+              defaultText: 'File',
+              filePath: '/path/to/file.vue',
+            },
+          ],
+        }) as any,
+      )
+
+      const collector = new Collector(helper)
+      await collector.init()
+
+      expect(collector.hasKey('file.key')).toBe(true)
+      expect(collector.hasKey('global.key')).toBe(true)
+      expect(collector.hasKey('other.key')).toBe(false)
+    })
+  })
+
+  describe('globalTexts integration', () => {
+    /**
+     * Init a collector whose only file holds the given extraction and return
+     * the extractions the templates receive.
+     */
+    async function initWithFile(
+      globalTexts: Record<string, string | [string, string]>,
+      extraction: Record<string, unknown>,
+    ) {
+      const helper = createMockHelper({
+        isDev: false,
+        globalTexts,
+        getImportPatternFiles: async () => ['/path/to/file.vue'],
+      })
+      vi.mocked(CollectedFile.fromFilePath).mockResolvedValue(
+        createMockCollectedFile({
+          filePath: '/path/to/file.vue',
+          fileContents: '$texts("x")',
+          extractions: [{ filePath: '/path/to/file.vue', ...extraction }],
+        }) as any,
+      )
+
+      const collector = new Collector(helper)
+      let received: Extraction[] = []
+      collector.addTemplate({
+        type: 'collector',
+        options: { path: 'test/output' },
+        build: (extractions) => {
+          received = extractions
+          return ''
+        },
+        buildTypes: null,
+      })
+      await collector.init()
+      return received
+    }
+
+    it('uses a global text as the default for a $texts call without one', async () => {
+      const extractions = await initWithFile(
+        { 'global.key': 'Global default text' },
+        { type: 'text', fullKey: 'global.key', key: 'key', context: 'global' },
+      )
+
+      expect(mockLoggerError).not.toHaveBeenCalled()
+      expect(extractions).toEqual([
+        expect.objectContaining({
+          fullKey: 'global.key',
+          defaultText: 'Global default text',
+        }),
+      ])
+    })
+
+    it('uses global plural texts as the defaults for a $textsPlural call without them', async () => {
+      const extractions = await initWithFile(
+        { 'global.items': ['One item', '@count items'] },
+        {
+          type: 'plural',
+          fullKey: 'global.items',
+          key: 'items',
+          context: 'global',
+          singular: '',
+          plural: '',
+        },
+      )
+
+      expect(mockLoggerError).not.toHaveBeenCalled()
+      expect(extractions).toEqual([
+        expect.objectContaining({
+          fullKey: 'global.items',
+          singular: 'One item',
+          plural: '@count items',
+        }),
+      ])
+    })
+
+    it('prefers a default text given in code over the global text', async () => {
+      const extractions = await initWithFile(
+        { 'global.key': 'Global default text' },
+        {
+          type: 'text',
+          fullKey: 'global.key',
+          key: 'key',
+          context: 'global',
+          defaultText: 'Code default text',
+        },
+      )
+
+      expect(mockLoggerError).not.toHaveBeenCalled()
+      expect(extractions).toEqual([
+        expect.objectContaining({ defaultText: 'Code default text' }),
+      ])
     })
   })
 })

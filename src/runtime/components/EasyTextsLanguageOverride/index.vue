@@ -27,8 +27,14 @@ const translations = ref(
 )
 
 async function reloadTranslations(language: string) {
-  translations.value =
-    await $nuxtEasyTexts.loadTranslationsForLanguage(language)
+  const result = await $nuxtEasyTexts.loadTranslationsForLanguage(language)
+
+  // The language may have changed again while loading. Without this check,
+  // a slow response for an earlier language would replace the texts of the
+  // current one.
+  if (language === overrideLanguage.value) {
+    translations.value = result
+  }
 }
 
 watch(overrideLanguage, reloadTranslations)

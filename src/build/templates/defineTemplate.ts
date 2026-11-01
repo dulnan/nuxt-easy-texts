@@ -1,5 +1,5 @@
 import type { ModuleHelper } from '../classes/ModuleHelper'
-import type { Extraction } from '../types/extraction'
+import type { Extraction, ExtractionError } from '../types/extraction'
 
 type TemplateOptions = {
   path: string
@@ -11,6 +11,14 @@ type CollectorTemplateCallback = (
   helper: ModuleHelper,
 ) => string | Promise<string>
 
+/**
+ * Returns the extractions the template can't generate output for. They are
+ * reported like any other extraction error.
+ */
+type CollectorTemplateValidator = (
+  extractions: Extraction[],
+) => ExtractionError[]
+
 type StaticTemplateCallback = (helper: ModuleHelper) => string
 
 export type CollectorTemplate = {
@@ -18,6 +26,7 @@ export type CollectorTemplate = {
   options: TemplateOptions
   build: CollectorTemplateCallback | null
   buildTypes: CollectorTemplateCallback | null
+  validate?: CollectorTemplateValidator
 }
 
 export type StaticTemplate = {
@@ -33,12 +42,14 @@ export function defineCollectorTemplate(
   options: TemplateOptions,
   build: CollectorTemplateCallback | null,
   buildTypes: CollectorTemplateCallback | null,
+  validate?: CollectorTemplateValidator,
 ): CollectorTemplate {
   return {
     type: 'collector',
     options,
     build,
     buildTypes,
+    validate,
   }
 }
 

@@ -1,32 +1,51 @@
 import type { Replacements, TextsState } from '../types'
 import { toDebug } from './debug'
 
-/**
- * Insert the count into a plural text.
- *
- * Replacement values are passed as functions: a string replacement would
- * interpret `$&`, `` $` ``, `$'` and `$$` in the value as patterns.
- */
-function replaceCount(
-  text: string,
-  count: number | string | null | undefined,
-): string {
-  return text.replace('@count', () => (count || 0).toString())
+function escapeRegExp(v: string): string {
+  return v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/**
+ * Replace the placeholders in a text, in a single pass.
+ *
+ * - Every occurrence of a placeholder is replaced.
+ * - A value is inserted as is and never searched again, so a value that
+ *   contains another placeholder (e.g. a name "@city") stays unchanged.
+ * - Longer placeholders are tried first, so "@countTotal" is not read as
+ *   "@count" followed by "Total".
+ * - The value is returned by a function: a string replacement would
+ *   interpret `$&`, `` $` ``, `$'` and `$$` in the value as patterns.
+ */
 function replace(text: string, replacements?: Replacements): string {
-  if (!replacements) {
+  const searches = Object.keys(replacements || {}).filter(Boolean)
+  if (!replacements || !searches.length) {
     return text
   }
 
-  let replaced = text
+  const pattern = new RegExp(
+    searches
+      .sort((a, b) => b.length - a.length)
+      .map(escapeRegExp)
+      .join('|'),
+    'g',
+  )
 
-  for (const [search, value] of Object.entries(replacements)) {
-    // A function, so that the value is inserted literally (see replaceCount).
-    replaced = replaced.replaceAll(search, () => value.toString())
-  }
+  return text.replace(pattern, (search) => replacements[search]!.toString())
+}
 
-  return replaced
+/**
+ * Pick the singular or plural text for the count and replace its
+ * placeholders. Both forms get @count, as in Drupal, where translators may
+ * use it in the singular form too. An explicit @count replacement wins.
+ */
+function pluralize(
+  singular: string,
+  plural: string,
+  count: number | string | null | undefined,
+  replacements?: Replacements,
+): string {
+  const text = count === 1 || count === '1' ? singular : plural
+  return replace(text, { '@count': count || 0, ...replacements })
 }
 
 export function getSingleText(
@@ -69,20 +88,22 @@ export function getPluralTexts(
   if (texts) {
     const candidate = texts[key]
     if (Array.isArray(candidate) && candidate.length === 2) {
-      const text =
-        count === 1 || count === '1'
-          ? candidate[0]!
-          : replaceCount(candidate[1]!, count)
-      return toDebug(key, replace(text, replacements), isDebug)
+      return toDebug(
+        key,
+        pluralize(candidate[0]!, candidate[1]!, count, replacements),
+        isDebug,
+      )
     }
   }
 
   // Dev fallback: see getSingleText. Only kicks in when both forms are
   // available (i.e. the call is untransformed). Tree-shaken in production.
   if (import.meta.dev && singular !== undefined && plural !== undefined) {
-    const text =
-      count === 1 || count === '1' ? singular : replaceCount(plural, count)
-    return toDebug(key, replace(text, replacements), isDebug)
+    return toDebug(
+      key,
+      pluralize(singular, plural, count, replacements),
+      isDebug,
+    )
   }
 
   return key

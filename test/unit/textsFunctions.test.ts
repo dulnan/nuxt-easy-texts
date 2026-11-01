@@ -251,9 +251,8 @@ describe('textsFunctions', () => {
         const texts: TextsState = {
           items: ['One', '@count items (@count total)'],
         }
-        // Note: the current implementation only replaces first @count
         const result = getPluralTexts('items', 7, false, texts)
-        expect(result).toBe('7 items (@count total)')
+        expect(result).toBe('7 items (7 total)')
       })
 
       it('handles text without @count placeholder', () => {
@@ -534,5 +533,70 @@ describe('textsFunctions', () => {
         ).toBe(`${value} items`)
       },
     )
+  })
+
+  describe('placeholders', () => {
+    it('replaces @count in the singular text', () => {
+      const texts: TextsState = { items: ['@count item', '@count items'] }
+      expect(getPluralTexts('items', 1, false, texts)).toBe('1 item')
+      expect(getPluralTexts('items', '1', false, texts)).toBe('1 item')
+    })
+
+    it('replaces @count in the singular dev-mode default text', () => {
+      expect(
+        getPluralTexts(
+          'missing',
+          1,
+          false,
+          null,
+          undefined,
+          '@count item',
+          '@count items',
+        ),
+      ).toBe('1 item')
+    })
+
+    it('does not replace placeholders inside inserted values', () => {
+      const texts: TextsState = { greeting: 'Hi @name from @city' }
+      expect(
+        getSingleText('greeting', false, texts, {
+          '@name': '@city',
+          '@city': 'Bern',
+        }),
+      ).toBe('Hi @city from Bern')
+    })
+
+    it('matches the longest placeholder, whatever the order', () => {
+      const texts: TextsState = { greeting: '@nameFull (@name)' }
+      expect(
+        getSingleText('greeting', false, texts, {
+          '@name': 'Ann',
+          '@nameFull': 'Ann Smith',
+        }),
+      ).toBe('Ann Smith (Ann)')
+    })
+
+    it('does not read a longer placeholder as @count', () => {
+      const texts: TextsState = {
+        items: ['One', '@countTotal total, @count shown'],
+      }
+      expect(
+        getPluralTexts('items', 3, false, texts, { '@countTotal': 10 }),
+      ).toBe('10 total, 3 shown')
+    })
+
+    it('lets an explicit @count replacement win', () => {
+      const texts: TextsState = { items: ['One item', '@count items'] }
+      expect(
+        getPluralTexts('items', 3, false, texts, { '@count': 'three' }),
+      ).toBe('three items')
+    })
+
+    it('treats placeholders with regex characters literally', () => {
+      const texts: TextsState = { price: 'Total: $(amount) or .*' }
+      expect(
+        getSingleText('price', false, texts, { '$(amount)': 5, '.*': 'x' }),
+      ).toBe('Total: 5 or x')
+    })
   })
 })

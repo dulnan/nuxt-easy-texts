@@ -143,6 +143,63 @@ describe('keys template', () => {
   })
 })
 
+/**
+ * Type check the given in-memory files and return the error messages.
+ */
+function typeErrors(files: Record<string, string>): string[] {
+  const options: ts.CompilerOptions = {
+    strict: true,
+    noEmit: true,
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext,
+    lib: ['lib.es2022.d.ts'],
+    types: [],
+  }
+  const host = ts.createCompilerHost(options)
+  const getSourceFile = host.getSourceFile.bind(host)
+  host.getSourceFile = (name, language, ...rest) =>
+    name in files
+      ? ts.createSourceFile(name, files[name]!, language)
+      : getSourceFile(name, language, ...rest)
+  const program = ts.createProgram(Object.keys(files), options, host)
+  return ts
+    .getPreEmitDiagnostics(program)
+    .map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'))
+}
+
+describe('keys template types', () => {
+  async function check(code: string) {
+    const declarations = await keysTemplate.buildTypes!(
+      [
+        text('single.key', 'Single'),
+        plural('plural.key', 'One item', '@count items'),
+      ],
+      helper,
+    )
+    return typeErrors({
+      '/keys.d.ts': declarations,
+      '/use.ts': `import { KEYS, type EasyTextsKey } from '#nuxt-easy-texts/keys'
+${code}
+export {}`,
+    })
+  }
+
+  it('accepts single and plural keys as EasyTextsKey', async () => {
+    expect(
+      await check(`const single: EasyTextsKey = 'single.key'
+const pluralKey: EasyTextsKey = 'plural.key'
+const all: EasyTextsKey[] = KEYS
+const first: 'single.key' | 'plural.key' | undefined = KEYS[0]`),
+    ).toEqual([])
+  })
+
+  it('rejects unknown keys as EasyTextsKey', async () => {
+    expect(await check(`const key: EasyTextsKey = 'missing.key'`)).toEqual([
+      expect.stringContaining(`'"missing.key"' is not assignable`),
+    ])
+  })
+})
+
 describe('drupal-graphql-texts generator', () => {
   /**
    * Returns the arguments of every generated field as decoded strings.
@@ -183,6 +240,59 @@ describe('drupal-graphql-texts generator', () => {
     expect(parseFields(code)).toEqual([
       { key: 'key', context: 'ctx', default: `Default ${value}` },
     ])
+  })
+
+  describe('key validation', () => {
+    const validate = (extractions: Extraction[]) =>
+      generatorDrupal('fragment.graphql').validate!(extractions)
+
+    it('accepts keys that become valid GraphQL field names', () => {
+      expect(
+        validate(
+          ['homeTitle', 'cart.addButton', 'a_b.c1', '_private', 'x.y.z'].map(
+            (key) => text(key, 'Text'),
+          ),
+        ),
+      ).toEqual([])
+    })
+
+    it.each(['cart.add-button', 'with space', '404.title', 'größe', 'a.🎉'])(
+      'rejects %j, whose field name is not a GraphQL name',
+      (key) => {
+        const extraction = {
+          ...text(key, 'Text'),
+          call: { code: `$texts('${key}', 'Text')`, start: 10, end: 30 },
+        }
+
+        expect(validate([extraction])).toEqual([
+          {
+            message: expect.stringContaining(`Key "${key}" can't be used`),
+            filePath: 'a.vue',
+            call: extraction.call,
+          },
+        ])
+      },
+    )
+
+    it('rejects keys that become the same field name', () => {
+      const errors = validate([text('a.b', 'One'), text('a__b', 'Two')])
+
+      expect(errors).toHaveLength(1)
+      expect(errors[0]!.message).toContain(
+        'Keys "a.b" and "a__b" can\'t both be used',
+      )
+    })
+  })
+
+  it('sorts the fields independently of the system locale', async () => {
+    // In e.g. Swedish, "ä" sorts after "z"; in English, next to "a".
+    const template = generatorDrupal('fragment.graphql')
+    const code = await template.build!(
+      [text('z', 'Z'), text('ä', 'Ä'), text('a', 'A')],
+      helper,
+    )
+
+    expect(parseFields(code).map((args) => args.key)).toEqual(['a', 'ä', 'z'])
   })
 
   it.each(TRICKY)('keeps the plural texts %j unchanged', async (value) => {

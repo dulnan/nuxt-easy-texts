@@ -163,6 +163,41 @@ describe('CollectedFile', () => {
     })
   })
 
+  describe('default text position', () => {
+    it.each(['undefined', 'null', 'void 0'])(
+      'accepts %s to pass replacements without a default text',
+      (empty) => {
+        const file = new CollectedFile(
+          cache,
+          '/path/to/file.vue',
+          `$texts('key', ${empty}, { '@name': name })`,
+        )
+
+        expect(file.errors).toEqual([])
+        expect(file.extractions).toEqual([
+          expect.objectContaining({ fullKey: 'key', defaultText: undefined }),
+        ])
+      },
+    )
+
+    // Production calls have no default text, so anything else in this
+    // position would be read as the replacements.
+    it.each(['someVariable', '42', `'Hello ' + name`, 'getText()'])(
+      'rejects %s as the default text',
+      (value) => {
+        const file = new CollectedFile(
+          cache,
+          '/path/to/file.vue',
+          `$texts('key', ${value})`,
+        )
+
+        expect(file.extractions).toEqual([])
+        expect(file.errors).toHaveLength(1)
+        expect(file.errors[0]!.message).toContain('"defaultText"')
+      },
+    )
+  })
+
   describe('error handling', () => {
     it('captures errors for invalid $texts calls', () => {
       // This will cause a parse error because the AST won't match expected structure
@@ -203,6 +238,38 @@ describe('CollectedFile', () => {
       expect(file.errors[0]!.message).toContain('key')
     })
 
+    it('accepts $textsPlural without default texts', () => {
+      // The texts come from another call or from globalTexts; the collector
+      // reports a missing default if there is none.
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        "$textsPlural('items', count)",
+      )
+
+      expect(file.errors).toEqual([])
+      expect(file.extractions).toEqual([
+        expect.objectContaining({
+          type: 'plural',
+          fullKey: 'items',
+          singular: '',
+          plural: '',
+        }),
+      ])
+    })
+
+    it('requires the plural text once a singular text is given', () => {
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        "$textsPlural('items', count, 'One item')",
+      )
+
+      expect(file.extractions).toHaveLength(0)
+      expect(file.errors).toHaveLength(1)
+      expect(file.errors[0]!.message).toContain('"plural"')
+    })
+
     it('rejects interpolated template literals in $textsPlural', () => {
       const file = new CollectedFile(
         cache,
@@ -228,6 +295,43 @@ describe('CollectedFile', () => {
         fullKey: 'greeting',
         defaultText: 'Hello there',
       })
+    })
+
+    it('resolves escapes in template literals like in string literals', () => {
+      // The source holds the escapes \u20AC, \' \` and \n, and a line
+      // continuation (a backslash before a line break), which produces
+      // nothing.
+      const source =
+        "$texts('price', `Price \\u20AC, it\\'s \\`quoted\\`\\nnext`)\n" +
+        "$textsPlural('items', n, `One \\u20AC`, `@count \\\nitems`)"
+      const file = new CollectedFile(cache, '/path/to/file.vue', source)
+
+      expect(file.errors).toEqual([])
+      expect(file.extractions).toEqual([
+        expect.objectContaining({
+          fullKey: 'price',
+          defaultText: "Price €, it's `quoted`\nnext",
+        }),
+        expect.objectContaining({
+          fullKey: 'items',
+          singular: 'One €',
+          plural: '@count items',
+        }),
+      ])
+    })
+
+    it('extracts the same text from a string and a template literal', () => {
+      // Otherwise the collector reports different default texts for one key.
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        "$texts('a', 'Price \\u20AC')\n$texts('a', `Price \\u20AC`)",
+      )
+
+      const [fromString, fromTemplate] = file.extractions
+      expect(fromTemplate!.type === 'text' && fromTemplate!.defaultText).toBe(
+        fromString!.type === 'text' && fromString!.defaultText,
+      )
     })
 
     it('handleError captures error message', () => {
@@ -293,6 +397,26 @@ describe('CollectedFile', () => {
       expect(file.extractions[0]!.context).toBe('global')
     })
 
+    it('keeps further dots in the key', () => {
+      const file = new CollectedFile(
+        cache,
+        '/path/to/file.vue',
+        `$texts('cart.items.title', 'Title'); $textsPlural('cart.items.count', n, 'One', '@count')`,
+      )
+
+      expect(file.errors).toEqual([])
+      expect(
+        file.extractions.map(({ fullKey, key, context }) => ({
+          fullKey,
+          key,
+          context,
+        })),
+      ).toEqual([
+        { fullKey: 'cart.items.title', key: 'items.title', context: 'cart' },
+        { fullKey: 'cart.items.count', key: 'items.count', context: 'cart' },
+      ])
+    })
+
     it('extracts key without context (single word)', () => {
       const file = new CollectedFile(
         cache,
@@ -317,6 +441,52 @@ describe('CollectedFile', () => {
       // Second file should use cached extraction
       expect(file2.extractions).toHaveLength(1)
       expect(cache.singleCache.size).toBe(1)
+    })
+
+    it('reports the file path of the file that contains the cached call', () => {
+      const content = `$texts('shared.key')`
+
+      new CollectedFile(cache, '/path/to/file1.vue', content)
+      const file2 = new CollectedFile(cache, '/path/to/file2.vue', content)
+
+      expect(file2.extractions[0]!.filePath).toBe('/path/to/file2.vue')
+    })
+  })
+
+  describe('unclosed calls', () => {
+    const content = `// Use $texts( for all texts.
+const a = $texts('a', 'A')`
+
+    it('reports an unclosed call as an error at its position', () => {
+      const file = new CollectedFile(cache, '/path/to/file.vue', content)
+
+      expect(file.errors).toEqual([
+        {
+          message: expect.stringContaining('without a closing parenthesis'),
+          filePath: '/path/to/file.vue',
+          call: { code: '$texts(', start: 7, end: 14 },
+        },
+      ])
+    })
+
+    it('still extracts the calls that follow it', () => {
+      const file = new CollectedFile(cache, '/path/to/file.vue', content)
+
+      expect(file.extractions).toEqual([
+        expect.objectContaining({ fullKey: 'a', defaultText: 'A' }),
+      ])
+    })
+
+    it('reports a change when only an error is added', async () => {
+      const valid = `const a = $texts('a', 'A')`
+      const file = new CollectedFile(cache, '/path/to/file.vue', valid)
+
+      vi.mocked(fs.readFile).mockResolvedValue(
+        Buffer.from(valid + ' // $texts('),
+      )
+
+      expect(await file.update()).toBe(true)
+      expect(file.errors).toHaveLength(1)
     })
   })
 })

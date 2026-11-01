@@ -1,7 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { parse } from 'acorn'
 import type { Node } from 'estree'
-import { transformTexts } from '../../src/build/vitePlugin'
+import type { Nuxt } from '@nuxt/schema'
+import extractTexts, { transformTexts } from '../../src/build/vitePlugin'
+import { logger } from '../../src/build/helpers'
 
 // Use acorn as the parser (same approach the vite plugin uses via unplugin)
 const parseFn = (code: string): Node =>
@@ -64,6 +66,69 @@ const b = $texts('key2', 'Text 2')`
       const source = `$textsPlural('discount', count, '40% off', '@count% off')`
       const result = transform(source)
       expect(result).toBe(`$textsPlural('discount', count)`)
+    })
+  })
+
+  describe('onKey', () => {
+    it('reports the key of every call with a literal key', () => {
+      const keys: string[] = []
+      transformTexts(
+        `$texts('a', 'A')
+$texts('b')
+$texts(variable)
+$texts(\`dynamic.\${x}\`)
+$texts(\`f\`, 'F')
+$textsPlural('c', n, 'One', '@count')
+$textsPlural('d', n)`,
+        parseFn,
+        (key) => keys.push(key),
+      )
+
+      // Calls without a default text are reported too: their key can be
+      // missing as well. Keys only known at runtime are not.
+      expect(keys).toEqual(['a', 'b', 'f', 'c', 'd'])
+    })
+  })
+
+  describe('explicitly empty default texts', () => {
+    // $texts('key', undefined, replacements) passes replacements without a
+    // default text. Left untransformed, production would read the undefined
+    // as the replacements and drop the real ones.
+
+    /**
+     * The arguments of the transformed call, as source code.
+     */
+    const transformedArgs = (source: string) => {
+      const result = transform(source)
+      const program = parseFn(result) as any
+      return program.body[0].expression.arguments.map((arg: any) =>
+        result.slice(arg.start, arg.end).replace(/\s+/g, ' '),
+      )
+    }
+
+    it.each(['undefined', 'null', 'void 0'])(
+      'strips %s in the $texts default text position',
+      (empty) => {
+        expect(
+          transformedArgs(`$texts('myKey', ${empty}, { '@name': name })`),
+        ).toEqual([`'myKey'`, `{ '@name': name }`])
+      },
+    )
+
+    it.each(['undefined', 'null', 'void 0'])(
+      'strips %s in the $textsPlural default text positions',
+      (empty) => {
+        expect(
+          transformedArgs(
+            `$textsPlural('items', count, ${empty}, ${empty}, { '@name': name })`,
+          ),
+        ).toEqual([`'items'`, 'count', `{ '@name': name }`])
+      },
+    )
+
+    it('produces the same result when run twice', () => {
+      const once = transform(`$texts('myKey', undefined, { '@name': name })`)
+      expect(transform(once)).toBe(once)
     })
   })
 
@@ -225,5 +290,54 @@ const b = $texts('key2', 'Text 2')`
 {{ $textsPlural('items', count) }}
 {{ $texts('title') }}`)
     })
+  })
+})
+
+describe('vitePlugin unknown keys', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  /**
+   * Run the plugin's transform on a source, as one build would.
+   */
+  function createTransform(knownKeys: string[]) {
+    const nuxt = {
+      options: {
+        rootDir: '/app',
+        sourcemap: { client: false, server: false },
+      },
+    } as unknown as Nuxt
+    const plugin = extractTexts(nuxt, (key) => knownKeys.includes(key)).raw(
+      {},
+      { framework: 'vite', versions: {} },
+    ) as any
+    return (source: string, id: string) =>
+      plugin.transform.call({ parse: parseFn }, source, id)
+  }
+
+  it('warns once per key and file about keys that were not extracted', () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
+    const transform = createTransform(['known'])
+    const source = `$texts('known', 'Known') + $texts('unknown', 'Unknown')`
+
+    // The client and the server build both run the plugin.
+    transform(source, '/app/app/app.vue')
+    transform(source, '/app/app/app.vue')
+
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0]![0]).toContain(
+      'Text key "unknown" in app/app.vue was not extracted',
+    )
+  })
+
+  it('does not warn when every key is known', () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
+    createTransform(['a', 'b'])(
+      `$texts('a', 'A') + $textsPlural('b', n)`,
+      '/app/app/pages/index.vue',
+    )
+
+    expect(warn).not.toHaveBeenCalled()
   })
 })

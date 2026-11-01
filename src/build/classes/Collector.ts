@@ -42,6 +42,11 @@ export class Collector {
   private templateResult: Map<string, string> = new Map()
 
   /**
+   * The full keys of all extractions, from files and globalTexts.
+   */
+  private knownKeys = new Set<string>()
+
+  /**
    * The module helper.
    */
   private helper: ModuleHelper
@@ -85,6 +90,13 @@ export class Collector {
 
   public reset() {
     this.files.clear()
+  }
+
+  /**
+   * Whether the key was extracted from a scanned file or is a global text.
+   */
+  public hasKey(fullKey: string): boolean {
+    return this.knownKeys.has(fullKey)
   }
 
   private getTemplate(template: string): string {
@@ -137,20 +149,22 @@ export class Collector {
               (existing[0] !== extraction.singular ||
                 existing[1] !== extraction.plural)
             ) {
-              let message = `$textsPlural key "${extraction.fullKey}" has multiple `
-
+              const differences: string[] = []
               if (existing[0] !== extraction.singular) {
-                message += `singular texts ("${existing[0]}" vs. "${extraction.singular}")`
+                differences.push(
+                  `singular texts ("${existing[0]}" vs. "${extraction.singular}")`,
+                )
               }
               if (existing[1] !== extraction.plural) {
-                message += `and plural texts ("${existing[0]}" vs. ${extraction.plural})`
+                differences.push(
+                  `plural texts ("${existing[1]}" vs. "${extraction.plural}")`,
+                )
               }
 
-              message += '.'
               errors.push({
                 filePath: extraction.filePath,
                 call: extraction.call,
-                message,
+                message: `$textsPlural key "${extraction.fullKey}" has different ${differences.join(' and ')}.`,
               })
             } else {
               pluralDefaults.set(extraction.fullKey, [
@@ -168,8 +182,31 @@ export class Collector {
       }
     }
 
+    // Global texts provide the default for keys that are used in code without
+    // one. A default given in code takes precedence.
+    for (const extraction of this.globalExtractions) {
+      if (extraction.type === 'text') {
+        if (extraction.defaultText && !singleDefaults.has(extraction.fullKey)) {
+          singleDefaults.set(extraction.fullKey, extraction.defaultText)
+        }
+      } else if (
+        extraction.singular &&
+        extraction.plural &&
+        !pluralDefaults.has(extraction.fullKey)
+      ) {
+        pluralDefaults.set(extraction.fullKey, [
+          extraction.singular,
+          extraction.plural,
+        ])
+      }
+    }
+
+    this.knownKeys = new Set(extractionsMap.keys())
+
     const extractions = [...extractionsMap.values()]
-      .sort((a, b) => b.fullKey.localeCompare(a.fullKey))
+      // A fixed locale, so that the generated output doesn't depend on the
+      // locale of the machine that builds it.
+      .sort((a, b) => b.fullKey.localeCompare(a.fullKey, 'en'))
       .map((extraction) => {
         if (extraction.type === 'text') {
           return {
@@ -200,7 +237,7 @@ export class Collector {
         const hasDefaultText = pluralDefaults.has(extraction.fullKey)
         if (!hasDefaultText) {
           errors.push({
-            message: `No default texts exists for $textsPlural key "${extraction.fullKey}".`,
+            message: `No default texts exist for $textsPlural key "${extraction.fullKey}".`,
             call: extraction.call,
             filePath: extraction.filePath,
           })
@@ -209,6 +246,10 @@ export class Collector {
     }
 
     for (const template of this.templates) {
+      if (template.validate) {
+        errors.push(...template.validate(extractions))
+      }
+
       if (template.build) {
         const content = await template.build(extractions, this.helper)
         this.templateResult.set(template.options.path + 'build', content)
@@ -244,21 +285,13 @@ export class Collector {
         const fileContents = this.files.get(error.filePath)?.fileContents
 
         if (fileContents) {
-          // Find the line numbers.
           const lines = fileContents.split('\n')
-          let lineNumber = 1
-          let currentPos = 0
-          let startLine = 0
 
-          // Find which line contains the start position.
-          for (const line of lines) {
-            currentPos += line.length + 1 // +1 for the newline character
-            if (currentPos >= error.call.start) {
-              startLine = lineNumber
-              break
-            }
-            lineNumber++
-          }
+          // The 1-based number of the line that contains the start position:
+          // one more than the line breaks before it.
+          const startLine = fileContents
+            .slice(0, error.call.start)
+            .split('\n').length
 
           // Get context: 3 lines before and 3 lines after
           const contextStart = Math.max(startLine - 3, 1)
@@ -318,18 +351,28 @@ export class Collector {
    * valid.
    */
   public async init(): Promise<void> {
+    let error: unknown = null
     try {
       await this.initDocuments()
       const { errors } = await this.buildState()
       if (errors.length) {
-        throw new Error('nuxt-easy-texts initialisation failed.')
+        // Already logged by buildState().
+        error = new Error('Text extraction found errors.')
       }
-    } catch {
-      // During dev mode, don't rethrow the error.
-      if (this.helper.isDev) {
-        return
-      }
-      throw new Error('nuxt-easy-texts initialisation failed.')
+    } catch (e) {
+      // Anything unexpected, e.g. a file that can't be read or a generator
+      // that throws. Log it, as it would be lost otherwise.
+      logger.error('Failed to extract texts.')
+      logger.error(e)
+      error = e
+    }
+
+    // During dev mode, don't throw: the errors are logged and fixing them
+    // triggers a rebuild.
+    if (error && !this.helper.isDev) {
+      throw new Error('nuxt-easy-texts initialisation failed.', {
+        cause: error,
+      })
     }
   }
 
@@ -410,9 +453,11 @@ export class Collector {
   }
 
   private handleUnlinkDir(folderPath: string): boolean {
+    // With the trailing slash, removing "card" leaves "cards" alone.
+    const prefix = folderPath.endsWith('/') ? folderPath : folderPath + '/'
     let anyHasChanged = false
     for (const filePath of [...this.files.keys()]) {
-      if (filePath.startsWith(folderPath)) {
+      if (filePath.startsWith(prefix)) {
         const hasChanged = this.handleUnlink(filePath)
         if (hasChanged) {
           anyHasChanged = true
