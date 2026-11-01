@@ -1,7 +1,7 @@
 import { defineBuildConfig } from 'unbuild'
 
 export default defineBuildConfig({
-  entries: ['./src/loader.ts'],
+  entries: ['./src/loader.ts', './src/drupal.ts'],
   externals: [
     'pathe',
     'magic-string',

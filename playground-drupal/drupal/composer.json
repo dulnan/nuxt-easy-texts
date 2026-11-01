@@ -1,0 +1,52 @@
+{
+  "name": "nuxt-easy-texts/playground-drupal",
+  "description": "Drupal site for testing nuxt-easy-texts with drupal/texts.",
+  "type": "project",
+  "license": "MIT",
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://packages.drupal.org/8"
+    }
+  ],
+  "require": {
+    "composer/installers": "^2.3",
+    "drupal/core-composer-scaffold": "^11",
+    "drupal/core-recommended": "^11",
+    "drupal/graphql": "^5.1",
+    "drupal/graphql_core_schema": "^1.0.28",
+    "drupal/texts": "^1.0.16",
+    "drush/drush": "^13"
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "config": {
+    "allow-plugins": {
+      "composer/installers": true,
+      "drupal/core-composer-scaffold": true,
+      "symfony/runtime": true
+    },
+    "sort-packages": true
+  },
+  "extra": {
+    "drupal-scaffold": {
+      "locations": {
+        "web-root": "web/"
+      },
+      "gitignore": false,
+      "file-mapping": {
+        "[project-root]/.editorconfig": false,
+        "[project-root]/.gitattributes": false,
+        "[project-root]/recipes/README.txt": false
+      }
+    },
+    "installer-paths": {
+      "web/core": [
+        "type:drupal-core"
+      ],
+      "web/modules/contrib/{$name}": [
+        "type:drupal-module"
+      ]
+    }
+  }
+}

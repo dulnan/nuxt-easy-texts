@@ -12,7 +12,8 @@
       "types": "./dist/types.d.mts",
       "import": "./dist/module.mjs"
     },
-    "./loader": "./dist/loader.mjs"
+    "./loader": "./dist/loader.mjs",
+    "./drupal": "./dist/drupal.mjs"
   },
   "main": "./dist/module.mjs",
   "typesVersions": {
@@ -22,6 +23,9 @@
       ],
       "loader": [
         "./dist/loader.d.mts"
+      ],
+      "drupal": [
+        "./dist/drupal.d.mts"
       ]
     }
   },
@@ -31,13 +35,15 @@
   "scripts": {
     "prepack": "nuxt-module-build build -vvv",
     "dev": "nuxi dev playground --host",
-    "typecheck": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit",
+    "dev:drupal": "nuxi dev playground-drupal/nuxt --host",
+    "typecheck": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit && cd ../playground-drupal/nuxt && vue-tsc --noEmit",
     "dev:build": "nuxi build playground",
     "dev:start": "node ./playground/.output/server/index.mjs",
-    "dev:prepare": "PLAYGROUND_MODULE_BUILD=true nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground",
+    "dev:prepare": "PLAYGROUND_MODULE_BUILD=true nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground && nuxi prepare playground-drupal/nuxt",
     "lint": "oxlint ./src && eslint ./src",
     "lint:fix": "oxlint ./src --fix && eslint ./src --fix",
     "test": "vitest run",
+    "test:drupal": "NUXT_DRUPAL_URL=http://nuxt-easy-texts.ddev.site vitest run test/e2e/drupal.test.ts",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "format": "oxfmt --check",

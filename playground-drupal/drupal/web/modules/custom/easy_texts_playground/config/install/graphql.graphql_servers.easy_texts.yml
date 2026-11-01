@@ -1,0 +1,25 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - graphql_core_schema
+    - texts_graphql
+name: easy_texts
+label: 'nuxt-easy-texts'
+endpoint: /graphql
+schema: core_composable
+schema_configuration:
+  core_composable:
+    # graphql_core_schema needs at least one entity type. Only the texts
+    # extension is used.
+    enabled_entity_types:
+      user: user
+    extensions:
+      texts: texts
+caching: false
+batching: false
+disable_introspection: false
+debug_flag: 0
+query_depth: 0
+query_complexity: 0
+persisted_queries_settings: {}

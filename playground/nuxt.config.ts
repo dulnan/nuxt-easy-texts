@@ -47,6 +47,12 @@ export default defineNuxtConfig({
 
   typescript: {
     strict: true,
+    tsConfig: {
+      // .nuxtrc includes the whole repo in the type check. The Drupal
+      // playground has its own type check, and its Drupal site contains
+      // thousands of JS files from Drupal core.
+      exclude: ['../../playground-drupal'],
+    },
   },
 
   compatibilityDate: '2026-10-31',

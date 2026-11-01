@@ -59,3 +59,41 @@ jobs:
         run: |
           npm run dev:build
           npm run test
+
+  drupal:
+    name: Drupal integration
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: 'npm'
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx playwright-core install chromium
+
+      - name: Start DDEV
+        uses: ddev/github-action-setup-ddev@v1
+        with:
+          ddevDir: playground-drupal/drupal
+
+      - name: Install Drupal
+        working-directory: playground-drupal/drupal
+        run: ddev setup
+
+      - name: Run module-builder
+        run: npm run dev:prepare
+
+      - name: Vitest
+        run: npm run test:drupal
