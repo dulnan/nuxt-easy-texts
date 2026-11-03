@@ -256,16 +256,28 @@ alone, and the command lists the keys it didn't update. Files in `node_modules`,
 e.g. of installed layers, are never changed. The code isn't reformatted, so run
 your formatter afterwards.
 
+Only calls in code are updated, because a text written elsewhere could end the
+surrounding syntax and add code. A call in a comment, a string, the text of a
+template or a static attribute is left alone, and so is every call in a template
+in another language than HTML, e.g. Pug. The command lists these calls.
+
 In a `.vue` file, a character that would end the surrounding syntax is written
 as a `\x` escape: a quote that would end a template attribute like
 `:title="$texts('key', 'Text')"`, the second `}` of a `}}` inside `{{ }}`, and
-the `/` of a `</script` inside `<script>`.
+the `/` of a `</script` inside `<script>`. In a template, so is an `&` that
+starts a character reference like `&#39;`, because Vue decodes these in
+expressions. Control characters and characters that change the direction of text
+are written as escapes in every file.
 
-| Option                   | Description                                                                                                                                                  |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--language <code>`      | The language to read, if the page loaded several.                                                                                                            |
-| `--auth <user:password>` | Basic auth credentials, e.g. for a protected test environment. Defaults to the `NUXT_EASY_TEXTS_AUTH` environment variable, also from the app's `.env` file. |
-| `--dry-run`              | Show the changes without writing them.                                                                                                                       |
+Before it writes a file, the command reads every merged text back the way Vue
+and JavaScript read it. If one would be read differently, it stops without
+changing any file.
+
+| Option                   | Description                                                                                                                                                                                                                                                          |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--language <code>`      | The language to read, if the page loaded several.                                                                                                                                                                                                                    |
+| `--auth <user:password>` | Basic auth credentials, e.g. for a protected test environment. Defaults to the `NUXT_EASY_TEXTS_AUTH` environment variable, also from the app's `.env` file, which keeps them out of your shell history. The command warns if it sends them unencrypted over `http`. |
+| `--dry-run`              | Show the changes without writing them.                                                                                                                                                                                                                               |
 
 `nuxt` answers `--help` itself, so use `nuxt easy-texts help` for the usage.
 

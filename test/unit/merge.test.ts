@@ -4,7 +4,7 @@ import { stringify } from 'devalue'
 import { compileTemplate, parse as parseSfc } from '@vue/compiler-sfc'
 import { extractMethodCalls } from '../../src/build/helpers/code'
 import { extractPlural, extractSingle } from '../../src/build/helpers/ast'
-import { mergeFile } from '../../src/build/merge/mergeFile'
+import { findMisreadCall, mergeFile } from '../../src/build/merge/mergeFile'
 import {
   getFallbackLanguages,
   getTextsFromPayload,
@@ -156,6 +156,22 @@ function compileErrors(code: string) {
   }).errors
 }
 
+/**
+ * The texts of the calls in the render function that Vue compiles from the
+ * template, without the module's vite plugin, as in dev mode.
+ */
+function compiledTexts(code: string) {
+  const { descriptor } = parseSfc(code)
+  return extract(
+    compileTemplate({
+      source: descriptor.template!.content,
+      filename: 'Component.vue',
+      id: 'test',
+      compilerOptions: { prefixIdentifiers: true },
+    }).code,
+  )
+}
+
 describe('mergeFile in .vue files', () => {
   const text = `It's a "test"`
 
@@ -245,15 +261,215 @@ const title = $texts('title', 'Old')
     expect(result.code).toContain(`$texts('title', 'New')`)
   })
 
-  it('escapes both quotes anywhere in a template in another language', () => {
-    const code = `<template lang="pug">
-p {{ $texts('title', 'Old') }}
-</template>
-`
-    const result = mergeFile('Component.vue', code, { title: text })
+  it.each([
+    [
+      'an attribute',
+      `<template><p :title="$texts('title', 'Old')" /></template>`,
+    ],
+    [
+      'an interpolation',
+      `<template><p>{{ $texts('title', 'Old') }}</p></template>`,
+    ],
+  ])('escapes the character references in %s, which Vue decodes', (_, code) => {
+    for (const text of [
+      `x&#39;+globalThis.alert(1)+&#39;`,
+      `&quot; &apos; &#x27; &#39 &amp; &lt;`,
+    ]) {
+      const result = mergeFile('Component.vue', code, { title: text })
 
-    expect(result.code).toContain(`$texts('title', 'It\\'s a \\x22test\\x22')`)
-    expect(extract(result.code!)).toMatchObject([{ defaultText: text }])
+      expect(compiledTexts(result.code!)).toMatchObject([{ defaultText: text }])
+      expect(extract(result.code!)).toMatchObject([{ defaultText: text }])
+    }
+  })
+
+  it('writes an & that starts no character reference as it is', () => {
+    const code = `<template><p>{{ $texts('title', 'Old') }}</p></template>`
+    const result = mergeFile('Component.vue', code, {
+      title: 'Terms & Conditions',
+    })
+
+    expect(result.code).toContain(`'Terms & Conditions'`)
+  })
+
+  it.each([
+    [
+      'an event handler',
+      `<template><button @click="a = 1; notify($texts('title', 'Old'))" /></template>`,
+    ],
+    [
+      'v-for',
+      `<template><p v-for="item in [$texts('title', 'Old')]" /></template>`,
+    ],
+    [
+      'a TypeScript script block',
+      `<script setup lang="ts">\nconst title: string = $texts('title', 'Old')\n</script>`,
+    ],
+  ])('merges a call in %s', (_, code) => {
+    const result = mergeFile('Component.vue', code, { title: 'New' })
+
+    expect(result.code).toContain(`$texts('title', 'New')`)
+  })
+})
+
+describe('mergeFile leaves calls that are not code alone', () => {
+  // A text that ends a comment, a string and a template literal.
+  const text = `*/ " \` ' --> {{ alert(1) }} <!-- /*`
+
+  it.each([
+    [
+      'a template comment',
+      'Component.vue',
+      `<template>\n  <!-- <p>{{ $texts('title', 'Old') }}</p> -->\n</template>`,
+    ],
+    [
+      'the text of a template',
+      'Component.vue',
+      `<template>\n  <p>Use $texts('title', 'Old')</p>\n</template>`,
+    ],
+    [
+      'a static attribute',
+      'Component.vue',
+      `<template>\n  <p title="$texts('title', 'Old')" />\n</template>`,
+    ],
+    [
+      'a string in a template expression',
+      'Component.vue',
+      "<template>\n  <p :title=\"`$texts('title', 'Old')`\" />\n</template>",
+    ],
+    [
+      'a template expression with a character reference',
+      'Component.vue',
+      `<template>\n  <p :title="$texts('title', 'Old') + &quot;!&quot;" />\n</template>`,
+    ],
+    [
+      'a template in another language',
+      'Component.vue',
+      `<template lang="pug">\np {{ $texts('title', 'Old') }}\n</template>`,
+    ],
+    [
+      'a comment in a script block',
+      'Component.vue',
+      `<script setup>\n/* $texts('title', 'Old') */\n</script>`,
+    ],
+    ['a comment', 'file.ts', `/*\n$texts('title', 'Old') */`],
+    ['a string', 'file.ts', `const a =\n  "$texts('title', 'Old')"`],
+    [
+      'a template literal',
+      'file.ts',
+      "const a = `${b}\n$texts('title', 'Old')`",
+    ],
+    [
+      'a file that cannot be parsed',
+      'file.ts',
+      `a +\n$texts('title', 'Old') +`,
+    ],
+  ])('in %s', (_, filePath, code) => {
+    const result = mergeFile(filePath, code, { title: text })
+
+    expect(result.code).toBeNull()
+    expect(result.skipped).toEqual([{ fullKey: 'title', line: 2 }])
+  })
+
+  it.each([
+    ['a property', 'file.ts', `this.$texts('title', 'Old')`],
+    ['an optional call', 'file.ts', `app?.$texts('title', 'Old')`],
+    [
+      'TypeScript',
+      'file.ts',
+      `const a: string = $texts('title', 'Old') as string`,
+    ],
+    ['JSX', 'file.tsx', `const a = <p title={$texts('title', 'Old')} />`],
+  ])('merges a call in %s', (_, filePath, code) => {
+    const result = mergeFile(filePath, code, { title: 'New' })
+
+    expect(result.code).toContain(`$texts('title', 'New')`)
+    expect(result.skipped).toEqual([])
+  })
+
+  it('escapes control characters and characters that change the direction of text', () => {
+    // Built from codes, because the formatter writes some escapes as the
+    // characters.
+    const invisible = [0x202e, 0x2066, 0x00, 0x1b, 0x09, 0x2028, 0x85]
+      .map((code) => 'x' + String.fromCharCode(code))
+      .join('')
+    const result = mergeFile('file.ts', `$texts('title', 'Old')`, {
+      title: invisible,
+    })
+
+    expect(result.code).toBe(
+      `$texts('title', 'x\\u202ex\\u2066x\\x00x\\x1bx\\tx\\u2028x\\x85')`,
+    )
+    expect(extract(result.code!)).toMatchObject([{ defaultText: invisible }])
+  })
+})
+
+describe('findMisreadCall', () => {
+  /**
+   * The merged call of the key "title" in the code, with the given texts.
+   */
+  function find(filePath: string, code: string, texts: string[]) {
+    const start = code.indexOf('$texts')
+    return findMisreadCall(filePath, code, [
+      {
+        fullKey: 'title',
+        line: 1,
+        start,
+        textArguments: texts.length === 1 ? [1] : [2, 3],
+        texts,
+      },
+    ])
+  }
+
+  it.each([
+    [
+      'a text that Vue decodes',
+      'Component.vue',
+      `<template><p :title="$texts('title', 'x&#39;+a+&#39;')" /></template>`,
+      ['x&#39;+a+&#39;'],
+    ],
+    [
+      'a text that ends the attribute',
+      'Component.vue',
+      `<template><p :title="$texts('title', 'a"b')" /></template>`,
+      ['a"b'],
+    ],
+    [
+      'a text that ends the interpolation',
+      'Component.vue',
+      `<template><p>{{ $texts('title', 'a}}b') }}</p></template>`,
+      ['a}}b'],
+    ],
+    [
+      'a text that ends the script block',
+      'Component.vue',
+      `<script setup>\nconst a = $texts('title', '</script>')\n</script>`,
+      ['</script>'],
+    ],
+    [
+      'a text with a placeholder',
+      'file.ts',
+      "const a = $texts('title', `${b}`)",
+      ['${b}'],
+    ],
+    ['other texts', 'file.ts', `const a = $texts('title', 'Old')`, ['New']],
+  ])('finds %s', (_, filePath, code, texts) => {
+    expect(find(filePath, code, texts)).toMatchObject({ fullKey: 'title' })
+  })
+
+  it.each([
+    [
+      'Component.vue',
+      `<template><p :title="$texts('title', 'It\\x22s \\x26#39;')" /></template>`,
+      ['It"s &#39;'],
+    ],
+    [
+      'Component.vue',
+      `<template><p>{{ $texts('title', 'a}\\x7db') }}</p></template>`,
+      ['a}}b'],
+    ],
+    ['file.ts', `$textsPlural('title', n, 'One', '@count')`, ['One', '@count']],
+  ])('reads the texts of %s back as written', (filePath, code, texts) => {
+    expect(find(filePath, code, texts)).toBeUndefined()
   })
 })
 

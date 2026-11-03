@@ -6,7 +6,13 @@ import colors from 'picocolors'
 import { ModuleHelper } from '../classes/ModuleHelper'
 import type { ModuleOptions } from '../types/options'
 import { mergeFile, type LiveTexts, type MergeFileResult } from './mergeFile'
-import { AUTH_ENV, readTextsFromFile, readTextsFromUrl } from './readTexts'
+import { isInvisible, toEscape } from './literal'
+import {
+  AUTH_ENV,
+  isUnencrypted,
+  readTextsFromFile,
+  readTextsFromUrl,
+} from './readTexts'
 
 const USAGE = `Usage: nuxt easy-texts merge <url|file> [options]
 
@@ -36,6 +42,21 @@ Run it in the app directory, or pass --cwd <dir> after the command name.
  */
 export function isInstalledFile(filePath: string): boolean {
   return /[\\/]node_modules[\\/]/.test(filePath)
+}
+
+/**
+ * A text from the page, or an error that may contain one, with its invisible
+ * characters escaped, so that printing it can't control the terminal or hide
+ * what it shows.
+ */
+function printable(text: string): string {
+  return [...text]
+    .map((char) =>
+      char !== '\n' && char !== '\t' && isInvisible(char)
+        ? toEscape(char)
+        : char,
+    )
+    .join('')
 }
 
 /**
@@ -71,13 +92,21 @@ async function merge(
 
   let texts: LiveTexts
   if (/^https?:\/\//.test(source)) {
+    const auth = options.auth ?? process.env[AUTH_ENV]
+    if (auth && isUnencrypted(source)) {
+      console.warn(
+        colors.yellow(
+          `The credentials are sent unencrypted, because ${source} uses http.`,
+        ),
+      )
+    }
     const result = await readTextsFromUrl(source, {
       language: options.language,
-      auth: options.auth ?? process.env[AUTH_ENV],
+      auth,
     })
     texts = result.texts
     console.log(
-      `Read ${Object.keys(texts).length} texts in "${result.language}" from ${source}`,
+      `Read ${Object.keys(texts).length} texts in "${printable(result.language)}" from ${source}`,
     )
   } else {
     texts = await readTextsFromFile(resolve(cwd, source))
@@ -104,9 +133,13 @@ async function merge(
   let changeCount = 0
   const missing = new Set<string>()
   const invalid = new Set<string>()
+  const skipped: string[] = []
   for (const { filePath, result } of merged) {
     result.missing.forEach((key) => missing.add(key))
     result.invalid.forEach((key) => invalid.add(key))
+    result.skipped.forEach(({ fullKey, line }) =>
+      skipped.push(`${relative(cwd, filePath)}:${line} ${fullKey}`),
+    )
     if (!result.code) {
       continue
     }
@@ -114,8 +147,8 @@ async function merge(
     for (const change of result.changes) {
       console.log(
         `  ${colors.gray(String(change.line).padStart(4))} ${change.fullKey}\n` +
-          `       ${colors.red('- ' + JSON.stringify(change.before))}\n` +
-          `       ${colors.green('+ ' + JSON.stringify(change.after))}`,
+          `       ${colors.red('- ' + printable(JSON.stringify(change.before)))}\n` +
+          `       ${colors.green('+ ' + printable(JSON.stringify(change.after)))}`,
       )
     }
     changeCount += result.changes.length
@@ -147,6 +180,11 @@ async function merge(
   if (invalid.size) {
     console.log(
       `${invalid.size} keys have a live text that is not a text, or not a singular and plural text: ${[...invalid].join(', ')}`,
+    )
+  }
+  if (skipped.length) {
+    console.log(
+      `${skipped.length} default texts were left alone, because they are not in code, e.g. in a comment, in the text of a template, or in a template in another language than HTML:\n  ${skipped.join('\n  ')}`,
     )
   }
   if (globalChanged.length) {
@@ -235,7 +273,7 @@ export async function runCli(args: string[], cwd: string): Promise<number> {
     })
     return 0
   } catch (error) {
-    console.error(colors.red(getErrorMessage(error)))
+    console.error(colors.red(printable(getErrorMessage(error))))
     return 1
   }
 }

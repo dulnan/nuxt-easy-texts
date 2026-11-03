@@ -75,6 +75,22 @@ describe('nuxt easy-texts merge e2e', async () => {
     expect(after).toBe(before)
   })
 
+  it('lists the calls that are not code and leaves them alone', async () => {
+    await copyFixture()
+    const component = join(copyDir, 'app/components/Commented.vue')
+    const componentCode = `<template>\n  <!-- <p>{{ $texts('basic.key', 'Basic text') }}</p> -->\n  <p />\n</template>\n`
+    await writeFile(component, componentCode)
+
+    const merged = await run(['merge', url('/')])
+
+    expect(merged.exitCode).toBe(0)
+    expect(merged.output).toContain(
+      '1 default texts were left alone, because they are not in code',
+    )
+    expect(merged.output).toContain('app/components/Commented.vue:2 basic.key')
+    expect(await readFile(component, 'utf8')).toBe(componentCode)
+  })
+
   it('leaves the files of a layer in node_modules alone', async () => {
     await copyFixture()
     const layerDir = join(copyDir, 'node_modules/installed-layer')

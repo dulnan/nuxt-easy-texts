@@ -135,6 +135,18 @@ export function getBasicAuthHeader(auth: string): string {
 }
 
 /**
+ * Whether a request to the URL sends credentials unencrypted: over http, to
+ * another host than this computer.
+ */
+export function isUnencrypted(url: string): boolean {
+  const { protocol, hostname } = new URL(url)
+  return (
+    protocol === 'http:' &&
+    !['localhost', '127.0.0.1', '[::1]'].includes(hostname)
+  )
+}
+
+/**
  * Reads the texts that a page of a running Nuxt app rendered, from the
  * payload in its HTML.
  */

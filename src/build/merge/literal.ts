@@ -1,22 +1,44 @@
-import type { EscapeSequence } from './escapeRanges'
+import type { EscapeSequence } from './codeRanges'
 
 /**
- * Whether the character at the index is the one to escape in one of the
- * sequences.
+ * Escapes that are easier to read than a \x escape.
  */
-function isInSequence(
-  text: string,
-  index: number,
-  sequences: EscapeSequence[],
-): boolean {
-  return sequences.some((sequence) => {
-    const start = index - sequence.index
-    return (
-      start >= 0 &&
-      text.slice(start, start + sequence.match.length).toLowerCase() ===
-        sequence.match
-    )
-  })
+const NAMED_ESCAPES: Record<string, string> = {
+  '\n': '\\n',
+  '\r': '\\r',
+  '\t': '\\t',
+}
+
+/**
+ * Whether the character is invisible and shouldn't be written as it is: a
+ * control character, a line or paragraph separator, or a character that
+ * changes the direction of text, which can make code display differently
+ * than it runs.
+ */
+export function isInvisible(char: string): boolean {
+  const code = char.charCodeAt(0)
+  return (
+    code < 0x20 ||
+    (code >= 0x7f && code <= 0x9f) ||
+    code === 0x061c ||
+    code === 0x200e ||
+    code === 0x200f ||
+    code === 0x2028 ||
+    code === 0x2029 ||
+    (code >= 0x202a && code <= 0x202e) ||
+    (code >= 0x2066 && code <= 0x2069) ||
+    code === 0xfeff
+  )
+}
+
+/**
+ * The \x or \u escape of a character.
+ */
+export function toEscape(char: string): string {
+  const code = char.charCodeAt(0)
+  return code <= 0xff
+    ? '\\x' + code.toString(16).padStart(2, '0')
+    : '\\u' + code.toString(16).padStart(4, '0')
 }
 
 /**
@@ -24,7 +46,7 @@ function isInSequence(
  * parsing the literal returns the text again.
  *
  * Characters in the given sequences are written as \x escapes, e.g. the "
- * in a template attribute as \x22. See getEscapeRanges().
+ * in a template attribute as \x22. See getCodeRanges().
  */
 export function toStringLiteral(
   text: string,
@@ -38,14 +60,10 @@ export function toStringLiteral(
       result += '\\\\'
     } else if (char === quote) {
       result += '\\' + quote
-    } else if (isInSequence(text, i, sequences)) {
-      result += '\\x' + char.charCodeAt(0).toString(16).padStart(2, '0')
-    } else if (char === '\n') {
-      result += '\\n'
-    } else if (char === '\r') {
-      result += '\\r'
-    } else if (char === ' ' || char === ' ') {
-      result += '\\u' + char.charCodeAt(0).toString(16)
+    } else if (sequences.some((sequence) => sequence(text, i))) {
+      result += toEscape(char)
+    } else if (isInvisible(char)) {
+      result += NAMED_ESCAPES[char] ?? toEscape(char)
     } else if (quote === '`' && char === '$' && text[i + 1] === '{') {
       result += '\\$'
     } else {
