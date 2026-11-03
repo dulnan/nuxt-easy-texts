@@ -207,7 +207,9 @@ describe('runCli', () => {
 
     expect(exitCode).toBe(0)
     expect(output).toContain('Read 1 texts in "en\\x1b]0;Title\\x07"')
-    expect(output).not.toMatch(/[\u0007\u001b]/)
+    // The page's sequence, not the colors of the output, which are on in CI.
+    expect(output).not.toContain(HOSTILE_LANGUAGE)
+    expect(output).not.toMatch(/\u001b\]|\u0007/)
   })
 
   it('prefers --auth over NUXT_EASY_TEXTS_AUTH', async () => {
