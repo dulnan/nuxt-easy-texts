@@ -3,8 +3,9 @@ name: nuxt-easy-texts
 description:
   Write and load translatable texts with nuxt-easy-texts. Use when adding or
   changing $texts or $textsPlural calls, using useEasyTexts() or
-  <EasyTextsLanguageOverride>, writing the easyTexts.loader.ts loader, or
-  merging live texts back into the code with nuxt easy-texts merge.
+  <EasyTextsLanguageOverride>, writing the easyTexts.loader.ts loader, working
+  with texts managed in Drupal, or merging live texts back into the code with
+  nuxt easy-texts merge.
 license: MIT
 ---
 
@@ -103,6 +104,11 @@ export default defineEasyTextsLoader(() => {
   e.g. JSON or a GraphQL fragment for the Drupal `texts` module, for the backend
   to use.
 
+When the texts come from Drupal, through the `texts` module, the
+`drupal-graphql-texts` generator or `mapDrupalTexts()`, read
+[references/drupal.md](references/drupal.md) before adding, changing or
+debugging a text.
+
 ## Show part of a page in another language
 
 Enable the component in `nuxt.config.ts`:
@@ -161,5 +167,5 @@ npx nuxt easy-texts merge https://www.example.com/en --dry-run
 
 ## More
 
-The configuration reference, the generators and the Drupal integration are in
-the module's README: `node_modules/nuxt-easy-texts/README.md`.
+The configuration reference and the generators are in the module's README:
+`node_modules/nuxt-easy-texts/README.md`.

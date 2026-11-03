@@ -273,8 +273,9 @@ the `/` of a `</script` inside `<script>`.
 
 The package ships an [agent skill](https://agentskills.io) in
 `skills/nuxt-easy-texts`. It teaches coding agents like Claude Code how to use
-`$texts`, `$textsPlural`, `useEasyTexts()`, the loader, the language override
-and the merge command, and it matches the installed version of the module.
+`$texts`, `$textsPlural`, `useEasyTexts()`, the loader, the language override,
+the merge command and the Drupal integration, and it matches the installed
+version of the module.
 
 To link it into your project:
 
