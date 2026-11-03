@@ -14,6 +14,7 @@ import { stringify } from 'devalue'
 import { isInstalledFile, runCli } from '../../src/build/merge/cli'
 import {
   getBasicAuthHeader,
+  isUnencrypted,
   readTextsFromUrl,
 } from '../../src/build/merge/readTexts'
 
@@ -22,8 +23,14 @@ const fixtureDir = fileURLToPath(new URL('../e2e/fixture', import.meta.url))
 const CREDENTIALS = 'editor:se:cret'
 
 /**
+ * A language whose name changes the title of the terminal.
+ */
+const HOSTILE_LANGUAGE = 'en\u001b]0;Title\u0007'
+
+/**
  * A page behind Basic auth, with texts in its payload like a Nuxt page.
- * /fallback renders the default texts instead.
+ * /fallback renders the default texts instead. /hostile has a language name
+ * that controls the terminal.
  */
 const server = createServer((request, response) => {
   if (request.headers.authorization !== getBasicAuthHeader(CREDENTIALS)) {
@@ -33,7 +40,10 @@ const server = createServer((request, response) => {
   const payload = stringify({
     state: {
       $snuxt_easy_texts_translations: new Map([
-        ['en', { 'basic.key': 'Text from the protected page' }],
+        [
+          request.url === '/hostile' ? HOSTILE_LANGUAGE : 'en',
+          { 'basic.key': 'Text from the protected page' },
+        ],
       ]),
       // As if loading the texts failed for /fallback.
       $snuxt_easy_texts_fallback: request.url === '/fallback' ? ['en'] : [],
@@ -70,6 +80,7 @@ async function run(args: string[]) {
     output.push(values.join(' '))
   }
   vi.spyOn(console, 'log').mockImplementation(collect)
+  vi.spyOn(console, 'warn').mockImplementation(collect)
   vi.spyOn(console, 'error').mockImplementation(collect)
   const exitCode = await runCli(args, fixtureDir)
   return { exitCode, output: output.join('\n') }
@@ -185,6 +196,20 @@ describe('runCli', () => {
     expect(output).toContain('+ "Text from the protected page"')
   })
 
+  it('escapes the control characters in what it prints from the page', async () => {
+    const { exitCode, output } = await run([
+      'merge',
+      pageUrl + 'hostile',
+      '--auth',
+      CREDENTIALS,
+      '--dry-run',
+    ])
+
+    expect(exitCode).toBe(0)
+    expect(output).toContain('Read 1 texts in "en\\x1b]0;Title\\x07"')
+    expect(output).not.toMatch(/[\u0007\u001b]/)
+  })
+
   it('prefers --auth over NUXT_EASY_TEXTS_AUTH', async () => {
     vi.stubEnv('NUXT_EASY_TEXTS_AUTH', 'editor:wrong')
     const { exitCode } = await run([
@@ -196,6 +221,18 @@ describe('runCli', () => {
     ])
 
     expect(exitCode).toBe(0)
+  })
+})
+
+describe('isUnencrypted', () => {
+  it.each([
+    ['http://www.example.com/', true],
+    ['https://www.example.com/', false],
+    ['http://localhost:3000/', false],
+    ['http://127.0.0.1:3000/', false],
+    ['http://[::1]:3000/', false],
+  ])('%s: %s', (url, expected) => {
+    expect(isUnencrypted(url)).toBe(expected)
   })
 })
 

@@ -159,9 +159,13 @@ npx nuxt easy-texts merge https://www.example.com/en --dry-run
   `nuxt` answers `--help` itself, so `nuxt easy-texts help` prints the usage.
 - Start with `--dry-run`, which prints the changes without writing them.
 - The command doesn't reformat, so run the formatter afterwards. In `.vue`
-  files, it writes `\x22`, `\x27`, `\x7d` or `\x2f` where the plain character
-  would end the attribute, the `{{ }}` or the `<script>`. These escapes keep the
-  file valid, so leave them in place.
+  files, it writes `\x22`, `\x27`, `\x7d`, `\x2f` or `\x26` where the plain
+  character would end the attribute, the `{{ }}` or the `<script>`, or start a
+  character reference like `&#39;`, which Vue decodes in templates. These
+  escapes keep the file valid and safe, so leave them in place.
+- It only updates calls in code. It lists the calls it left alone: in a comment,
+  a string, the text of a template, or a template in another language than HTML,
+  e.g. Pug.
 - If loading the texts failed on the page, it rendered the default texts, and
   the command refuses to merge. Try again once the page loads its texts.
 
