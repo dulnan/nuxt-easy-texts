@@ -81,6 +81,19 @@ const { $texts, $textsPlural } = useEasyTexts()
 const text = computed(() => $texts('backToTop', 'Back to top'))
 ```
 
+To insert dynamic values, use placeholders in the text and pass their values as
+replacements, the third argument of `$texts` and the fifth of `$textsPlural`:
+
+```typescript
+$texts('greeting', 'Hello @name!', { '@name': user.name })
+
+$textsPlural('cartItemsIn', count, '1 item in @cart', '@count items in @cart', {
+  '@cart': cart.name,
+})
+```
+
+`$textsPlural` replaces `@count` with the count by itself.
+
 ### Configure loader
 
 All texts are loaded at runtime. How and where the texts are loaded is up to
@@ -93,40 +106,59 @@ directory (`app/` by default, see
 import { defineEasyTextsLoader } from 'nuxt-easy-texts/loader'
 
 export default defineEasyTextsLoader(() => {
-  const language = useCurrentLanguage()
+  // The current language of your app, e.g. from the route.
+  const appLanguage = useCurrentLanguage()
 
   return {
-    load(): Promise<Record<string, string | [string, string]>> {
-      // Load the texts in the current language from an API route.
+    load(language) {
+      // Load the texts in the given language from an API route.
       // Method should return an object whose properties are the full keys and
       // the values are either a string (for $texts keys) or an array of
       // exactly two strings (for $textsPlural keys).
       //
-      // For our two examples above, the loader should return the following:
+      // For the homeTitle and counter examples above, the loader should
+      // return the following:
       // {
       //   homeTitle: 'Welcome!',
       //   counter: ['One item', '@count items'],
       // }
       return $fetch('/api/load-texts', {
         query: {
-          language: language.value,
+          language,
         },
       })
     },
-    reloadTrigger() {
-      // Will call load() again whenever the language changes.
-      return computed(() => language.value)
+    currentLanguage() {
+      // The language the page is rendered in. Its texts are loaded with
+      // load(), and loaded again whenever it changes.
+      return computed(() => appLanguage.value)
     },
-    // If your load() method depends on another Nuxt plugin to run before,
-    // you can define its name here.
-    dependsOn: ['name-of-another-plugin'],
   }
 })
 ```
 
-nuxt-easy-texts will call this method inside its plugin, right before it injects
+`load()` receives the language to load. That is usually the current language,
+but [`<EasyTextsLanguageOverride>`](#partial-language-override) passes its own,
+so always load the language that `load()` receives. If your app has only one
+language, you can leave out `currentLanguage()`, and `load()` receives `und`.
+
+nuxt-easy-texts will call `load()` inside its plugin, right before it injects
 `$texts` and `$textsPlural`. Make sure that anything that requires these two
 methods is loaded **after** this plugin is initialized.
+
+If `load()` depends on another Nuxt plugin, pass the name of that plugin as
+`dependsOn` in the options, the second argument, so that it runs first:
+
+```typescript
+export default defineEasyTextsLoader(
+  () => {
+    // ...
+  },
+  {
+    dependsOn: ['name-of-another-plugin'],
+  },
+)
+```
 
 ### Fallback to the default texts
 
@@ -141,12 +173,25 @@ when loading the texts fails.
 ### Partial Language Override
 
 If you need to override the language for parts of the page, you can do so using
-the `<EasyTextsLanguageOverride>` component. It takes a `language` prop and will
-call the `load()` method of your loader with the given language. It provides
-these overrides for all nested `$texts` and `$textsPlural` calls.
+the `<EasyTextsLanguageOverride>` component. Enable it in your config:
 
-In addition, the component will set a `lang` attribute to indicate that the
-child tree is in a different language.
+```typescript
+export default defineNuxtConfig({
+  easyTexts: {
+    experimental: {
+      languageOverride: true,
+    },
+  },
+})
+```
+
+The component takes a `language` prop and will call the `load()` method of your
+loader with the given language. It provides these overrides for all nested
+`$texts` and `$textsPlural` calls.
+
+If the language differs from the current one, the component will also set a
+`lang` attribute to indicate that the child tree is in a different language. It
+renders a `div`, or the element given in the `tag` prop.
 
 **Important:** For this to work, you _must_ use
 `const { $texts, $textsPlural } = useEasyTexts()` whenever an override is needed
@@ -154,6 +199,28 @@ in a template! This is because these two global properties are provided in a
 plugin. Therefore, they can't use the usual provide/inject mechanism. Using
 `useEasyTexts()` will return **different** `$texts` and `$textsPlural`
 implementations that use overrides if available.
+
+The override is provided to the children of `<EasyTextsLanguageOverride>`, so
+call `useEasyTexts()` in a component rendered inside it:
+
+```vue
+<template>
+  <EasyTextsLanguageOverride language="fr">
+    <LegalNotice />
+  </EasyTextsLanguageOverride>
+</template>
+```
+
+```vue
+<!-- components/LegalNotice.vue -->
+<template>
+  <p>{{ $texts('footer.legal', 'Legal notice') }}</p>
+</template>
+
+<script lang="ts" setup>
+const { $texts } = useEasyTexts()
+</script>
+```
 
 ### Merge the live texts into the code
 
@@ -202,6 +269,27 @@ the `/` of a `</script` inside `<script>`.
 
 `nuxt` answers `--help` itself, so use `nuxt easy-texts help` for the usage.
 
+## Agent skill
+
+The package ships an [agent skill](https://agentskills.io) in
+`skills/nuxt-easy-texts`. It teaches coding agents like Claude Code how to use
+`$texts`, `$textsPlural`, `useEasyTexts()`, the loader, the language override,
+the merge command and the Drupal integration, and it matches the installed
+version of the module.
+
+To link it into your project:
+
+- With pnpm 12.11 or newer, run `pnpm approve nuxt-easy-texts`. pnpm links the
+  skills of approved direct dependencies when it installs them.
+- With [skills-npm](https://github.com/antfu/skills-npm), run
+  `npm i -D skills-npm` and `npx skills-npm setup`. It links the skills of your
+  installed packages on every install.
+
+Or copy the skill from GitHub with the
+[skills CLI](https://github.com/vercel-labs/skills):
+`npx skills add dulnan/nuxt-easy-texts`. This copy follows the main branch, not
+your installed version.
+
 ## How it works
 
 nuxt-easy-texts searches your Vue components and JS/TS files for all calls to
@@ -212,7 +300,8 @@ that won't work:
   `$textsPlural` - you can't rename them (e.g.
   `const { $texts: getText } = useEasyTexts()` will not work)
 - Use variables: You can only use string literals inside both methods. Something
-  like `{{ $texts('language_' + language) }}` will not work
+  like `{{ $texts('language_' + language) }}` will not work. Pass dynamic values
+  as [replacements](#use-texts) instead
 
 ### Output files
 
@@ -411,29 +500,37 @@ console.log(goBackText.value)
 
 ## Changing languages (reloading texts)
 
-If the language or any context (like country) changes you may want to reload all
-texts. To do that, implement a `reloadTrigger` method in your loader. The method
-should return a computed property. nuxt-easy-texts adds a watcher to this
-property on the client side and will reload the texts by calling `load()` again
-on your loader when the value changes.
+When the language changes, the texts of the new language must be loaded. To do
+that, implement a `currentLanguage` method in your loader. The method should
+return a computed property with the current language. nuxt-easy-texts adds a
+watcher to this property on the client side and will load the texts by calling
+`load()` with the new language when the value changes. The texts of each
+language are only loaded once, so switching back to a language doesn't load its
+texts again.
 
 ```typescript
 import { defineEasyTextsLoader } from 'nuxt-easy-texts/loader'
 
 export default defineEasyTextsLoader(() => {
-  const language = useCurrentLanguage()
+  const appLanguage = useCurrentLanguage()
 
   return {
-    reloadTrigger() {
-      return computed(() => language.value)
+    load(language) {
+      return $fetch('/api/load-texts', { query: { language } })
+    },
+    currentLanguage() {
+      return computed(() => appLanguage.value)
     },
   }
 })
 ```
 
-**NOTE:** The watcher is only added client-side, not during SSR! The
-`loader.load()` method is called exactly once during SSR and it must return the
-correct translations.
+`reloadTrigger`, the previous name of `currentLanguage`, still works, but is
+deprecated.
+
+**NOTE:** The watcher is only added client-side, not during SSR! During SSR,
+`loader.load()` is called exactly once for the current language, and it must
+return the correct translations.
 
 Because the loaded texts are stored using `useState()` they are part of the
 payload. So during hydration, the `loader.load()` method is not called.
@@ -475,6 +572,15 @@ export default defineNuxtConfig({
       learnMore: 'Learn more',
       resultsTitle: ['1 result', '@count results'],
     },
+
+    experimental: {
+      // Enables the <EasyTextsLanguageOverride> component.
+      languageOverride: false,
+
+      // Enables the <EasyTextsDebugOverlay> component, which highlights the
+      // rendered text keys in debug mode.
+      advancedDebug: false,
+    },
   },
 })
 ```
@@ -498,6 +604,9 @@ Use a single text string
 
 ```typescript
 $texts('backToHome', 'Back to homepage')
+
+// With replacements.
+$texts('greeting', 'Hello @name!', { '@name': user.name })
 ```
 
 #### $textsPlural
@@ -506,17 +615,26 @@ Use text string with a singular and plural option.
 
 ```typescript
 const cartCount = ref(2)
-$textsPlural('cartItems', cartCount.value, '1 items', '@count items')
+$textsPlural('cartItems', cartCount.value, '1 item', '@count items')
+
+// With replacements.
+$textsPlural(
+  'cartItemsIn',
+  cartCount.value,
+  '1 item in @cart',
+  '@count items in @cart',
+  { '@cart': cart.name },
+)
 ```
 
 The singular text is used when the count is 1. `@count` is replaced with the
 count in both texts, so a translation may also use it in the singular text.
 
-#### isDebug: ComputeRef<boolean>
+#### isDebug: ComputedRef<boolean>
 
 Check if debug mode is enabled.
 
-#### enabledDebug: () => void
+#### enableDebug: () => void
 
 Enable debug mode.
 
